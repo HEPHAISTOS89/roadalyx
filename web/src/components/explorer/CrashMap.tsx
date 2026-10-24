@@ -59,6 +59,8 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
         attributionControl: { compact: true }, cooperativeGestures: false, maxPitch: 0, dragRotate: false,
       });
       m.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+      // The basemap style names a few POI icons its sprite lacks; an empty image keeps the console clean.
+      m.on('styleimagemissing', (e) => { if (!m!.hasImage(e.id)) m!.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) }); });
       m.on('load', () => {
         m!.addSource('counties', { type: 'geojson', data: counties as FeatureCollection });
         m!.addLayer({ id: 'county-line', type: 'line', source: 'counties', paint: { 'line-color': '#4a524a', 'line-width': 1 } });
