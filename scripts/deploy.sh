@@ -19,11 +19,19 @@ PY=.venv/bin/python
 export AWS_REGION="$REGION"
 
 say() { printf '\n== %s\n' "$*" >&2; }
+die() { printf 'deploy: %s\n' "$*" >&2; exit 1; }
+
+for tool in aws npm zip rsync; do command -v "$tool" >/dev/null || die "$tool is required"; done
+[[ -x "$PY" ]] || die "no virtualenv at .venv (see README, Run it locally)"
+sha256() { if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -c1-16; }
 
 ensure_bucket() {
-  if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then return; fi
-  say "Creating private bucket s3://$BUCKET"
-  aws s3api create-bucket --bucket "$BUCKET" --create-bucket-configuration "LocationConstraint=$REGION" >/dev/null
+  if ! aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+    say "Creating private bucket s3://$BUCKET"
+    if [[ "$REGION" == us-east-1 ]]; then aws s3api create-bucket --bucket "$BUCKET" >/dev/null
+    else aws s3api create-bucket --bucket "$BUCKET" --create-bucket-configuration "LocationConstraint=$REGION" >/dev/null; fi
+  fi
+  # Applied on every run (all idempotent), so a first run that stopped half-way still ends hardened.
   aws s3api put-public-access-block --bucket "$BUCKET" --public-access-block-configuration \
     BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
   aws s3api put-bucket-encryption --bucket "$BUCKET" --server-side-encryption-configuration \
@@ -33,13 +41,20 @@ ensure_bucket() {
     \"Statement\":[{\"Sid\":\"TlsOnly\",\"Effect\":\"Deny\",\"Principal\":\"*\",\"Action\":\"s3:*\",
       \"Resource\":[\"arn:aws:s3:::$BUCKET\",\"arn:aws:s3:::$BUCKET/*\"],
       \"Condition\":{\"Bool\":{\"aws:SecureTransport\":\"false\"}}}]}"
-  # Old code packages are not needed once a newer one is deployed.
-  aws s3api put-bucket-lifecycle-configuration --bucket "$BUCKET" --lifecycle-configuration \
-    '{"Rules":[{"ID":"expire-old-releases","Status":"Enabled","Filter":{"Prefix":"releases/"},"Expiration":{"Days":30}}]}' >/dev/null
+  aws s3api delete-bucket-lifecycle --bucket "$BUCKET" 2>/dev/null || true
+}
+
+# Keep the live code package and the one before it (CloudFormation rolls back to it); delete older ones.
+prune_releases() {
+  aws s3api list-objects-v2 --bucket "$BUCKET" --prefix releases/ \
+    --query 'reverse(sort_by(Contents, &LastModified))[2:].Key' --output text |
+    tr '\t' '\n' | grep -v '^None$' | grep . | while read -r key; do
+      aws s3 rm "s3://$BUCKET/$key" --only-show-errors
+    done
 }
 
 publish_data() {
-  [[ -f "$DATA" ]] || { echo "Missing $DATA: run  $PY -m roadalyx data/raw/district_crashes.csv"; exit 1; }
+  [[ -f "$DATA" ]] || die "missing $DATA: run  $PY -m roadalyx data/raw/district_crashes.csv"
   say "Uploading $DATA"
   aws s3 cp "$DATA" "s3://$BUCKET/$DATA_KEY" --content-type application/gzip --only-show-errors
   aws s3api head-object --bucket "$BUCKET" --key "$DATA_KEY" --query ETag --output text | tr -d '"'
@@ -54,6 +69,8 @@ deploy_stack() {
 }
 
 if [[ "${1:-}" == "data" ]]; then
+  say "Tests"
+  "$PY" -m pytest -q
   ensure_bucket
   version="$(publish_data)"
   code_key="$(aws cloudformation describe-stacks --stack-name "$STACK" \
@@ -76,13 +93,14 @@ rm -rf build && mkdir -p build/lambda
 # The pipeline modules need pandas and never run on Lambda.
 rsync -a --exclude '__pycache__' --exclude 'cris.py' --exclude '__main__.py' roadalyx build/lambda/
 (cd build/lambda && zip -qr ../lambda.zip .)
-code_key="releases/$(shasum -a 256 build/lambda.zip | cut -c1-16).zip"
+code_key="releases/$(sha256 build/lambda.zip).zip"
 say "Package $(du -h build/lambda.zip | cut -f1) -> s3://$BUCKET/$code_key"
 
 ensure_bucket
 aws s3 cp build/lambda.zip "s3://$BUCKET/$code_key" --only-show-errors
 version="$(publish_data)"
 deploy_stack "$code_key" "$version"
+prune_releases
 
 url="$(aws cloudformation describe-stacks --stack-name "$STACK" --query "Stacks[0].Outputs[?OutputKey=='Url'].OutputValue" --output text)"
 say "Smoke test"

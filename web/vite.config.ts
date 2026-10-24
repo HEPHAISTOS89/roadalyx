@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  // The API serves the built portal from roadalyx/web (see scripts/build.sh).
+  // The API serves the built portal from roadalyx/web; scripts/deploy.sh packages it into the Lambda.
   build: {
     outDir: '../roadalyx/web',
     emptyOutDir: true,

@@ -32,7 +32,7 @@ scripts/deploy.sh                                     # test, build, deploy to A
 | API | `roadalyx/api.py` | FastAPI, 10 read-only endpoints, 7 shared filters, JSON or CSV. |
 | Deployment | `infra/template.yaml`, `scripts/deploy.sh` | One CloudFormation stack: Lambda with a function URL, IAM role, CloudWatch log group; data in a private S3 bucket. |
 | Portal (bonus) | `web/` | A 3D landing view of the district, an Explorer with map, charts and tables, and a page that shows the architecture live. |
-| Tests | `tests/` | 32 pytest checks on a synthetic CRIS-shaped file, plus one on the real export when it is present. |
+| Tests | `tests/` | pytest on a synthetic CRIS-shaped file (preamble, repeated Crash IDs, both factor separators, sentinels, bad header counts), cross-endpoint total reconciliation, and one test on the real export when it is present. |
 
 ```
 roadalyx/        Python package: cleaning, metrics, dataset I/O, API
@@ -92,9 +92,10 @@ The full reasoning, with the code that checks each claim, is in the [EDA noteboo
 
 **One row is a person, not a crash.** The file has 67,906 rows for 24,261 crashes: each person involved
 (drivers, passengers, pedestrians) has a row that repeats the crash's fields. Counting rows would count a
-four-person crash four times. The pipeline keeps one record per `Crash ID`, after checking that the 66
-crash-level columns never disagree within a crash (they do not, for any crash). The result is then checked
-against the export's own header ("24,261 Crashes … 67,906 Persons"); the CLI exits with an error if they differ.
+four-person crash four times. The pipeline keeps one record per `Crash ID`, after checking that the crash
+columns it keeps never disagree within a crash (the notebook checks all 66 crash-level columns: none does).
+The result is then checked against the export's own header ("24,261 Crashes … 67,906 Persons"); if they
+differ, the CLI writes nothing and exits with an error.
 
 | Issue found | Decision | Why |
 |---|---|---|
@@ -254,9 +255,9 @@ account's budget alarm stays in place. No paid service is used: no API Gateway, 
 ### Security
 
 - No credentials in the code; the deploy script uses the operator's AWS CLI session and fails without one.
-- Bucket: Block Public Access, SSE-S3 encryption, a policy that denies non-TLS requests, 30-day expiry of old code packages.
+- Bucket: Block Public Access, SSE-S3 encryption, a policy that denies non-TLS requests; each deploy keeps only the live code package and the previous one.
 - API: `GET` only (other methods return 405); every parameter validated with typed limits; page size capped at 1,000; unknown values rejected with `422`.
-- Headers on every response: a strict Content-Security-Policy (only the map tile server is allowed besides the site itself), HSTS, `nosniff`, `frame-ancestors 'none'`.
+- Headers on every response: a strict Content-Security-Policy (only the map tile server is allowed besides the site itself; `/api/docs` also loads one pinned Swagger UI release), HSTS, `nosniff`, `frame-ancestors 'none'`. Errors and `/api/health` are `no-store`; data answers are cacheable for 5 minutes.
 - CSV cells that start with `=`, `+`, `-` or `@` are quoted, so an export cannot run as a spreadsheet formula.
 - Raw CRIS data, with person-level fields, is never uploaded or committed.
 
@@ -265,7 +266,7 @@ account's budget alarm stays in place. No paid service is used: no API Gateway, 
 ```bash
 aws login                 # or any AWS CLI credentials for the target account
 scripts/deploy.sh         # tests -> portal build -> Lambda package (Linux arm64 wheels) -> S3 -> CloudFormation -> smoke test
-scripts/deploy.sh data    # after re-running the pipeline: upload the new dataset only
+scripts/deploy.sh data    # after re-running the pipeline: tests, then upload the new dataset only
 ```
 
 The script creates the bucket on the first run, uploads the code as `releases/<hash>.zip` and the dataset,
@@ -275,8 +276,8 @@ and passes the dataset's ETag to the stack so new Lambda instances load the new 
 
 One frontend, served by the same Lambda function, so the browser talks to a single origin.
 
-- **Overview:** the district at night in three.js. Each light is a crash at its CRIS coordinates; nothing
-  else is drawn, so the road network you see is the crashes themselves. Fatal and serious crashes stand as
+- **Overview:** the district at night in three.js. Each light is a crash at its CRIS coordinates; apart from
+  the county lines nothing else is drawn, so the road network you see is the crashes themselves. Fatal and serious crashes stand as
   red and orange posts. A timeline replays 2020 to 2026, and hovering a county shows its counts. Below, four
   findings are recomputed from the API on each visit (for example, rural crashes are about five times as
   likely as urban ones to be fatal or serious).
@@ -297,7 +298,7 @@ stays still under `prefers-reduced-motion`.
 - **Counts, not rates.** Without exposure (AADT, VMT) the counts cannot rank roads by risk. Joining TxDOT's
   roadway inventory would allow crash rates per segment and a Highway Safety Manual style screening.
 - **Recent months are provisional.** 2026 ends on 20 October, and CRIS reports keep arriving after a crash.
-- **Rate limiting** is only Lambda's concurrency limit. A busier deployment would put API Gateway (usage plans) or CloudFront with AWS WAF in front.
+- **No throttling.** The function URL is public and the only cap is the account's Lambda concurrency (10 on this account). A client looping on the CSV export could use up the free compute; the account's budget alarm would flag it, it would not stop it. Reserved concurrency needs a higher account limit; a busier deployment would put API Gateway usage plans or CloudFront with AWS WAF in front.
 - **The pipeline runs on a laptop.** Next step: an S3-triggered Lambda (or a scheduled one with EventBridge) that processes a new CRIS export dropped into the bucket.
 - **Factor names are not harmonised.** CRIS has near-duplicates such as *Under influence – alcohol* and *Intoxicated – alcohol*; merging them is an analyst's decision, left visible rather than made silently.
 

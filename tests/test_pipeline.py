@@ -87,6 +87,14 @@ def test_metrics(crashes):
     assert hours["unknown"] == 1 and sum(b["crashes"] for b in hours["buckets"]) == 3
 
 
+def test_cli_refuses_an_export_that_disagrees_with_its_header(tmp_path):
+    bad = tmp_path / "bad.csv"
+    bad.write_text(FIXTURE.read_text(encoding="utf-8").replace("4 Crashes", "5 Crashes"), encoding="utf-8")
+    out = tmp_path / "crashes.json.gz"
+    assert main([str(bad), "--out", str(out)]) == 1 and not out.exists()
+    assert main([str(bad), "--out", str(out), "--force"]) == 0 and out.exists()
+
+
 def test_cli_writes_a_loadable_dataset(tmp_path):
     out = tmp_path / "crashes.json.gz"
     assert main([str(FIXTURE), "--out", str(out)]) == 0
@@ -103,4 +111,10 @@ def test_real_export_matches_its_own_header():
     assert cris.conflicting_crashes(export.persons) == 0
     # severity on the crash equals its worst person injury, so K crashes carry deaths and others none
     assert all((c["severity"] == "K") == (c["deaths"] > 0) for c in records)
-    assert Dataset(records, {}).coverage == (date(2020, 1, 1), date(2026, 10, 20))
+    data = Dataset(records, {})
+    assert data.coverage == (date(2020, 1, 1), date(2026, 10, 20))
+    # the same crashes, counted three ways, give the same total
+    assert sum(s["crashes"] for s in metrics.severity_counts(records)["severity"]) == len(records)
+    for by in ("year", "month", "hour", "weekday"):
+        t = metrics.trend(records, by, data.coverage)
+        assert sum(b["crashes"] for b in t["buckets"]) + t["unknown"] == len(records)

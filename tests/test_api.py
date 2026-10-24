@@ -104,8 +104,13 @@ def test_security_and_cache_headers():
     assert r.headers["cache-control"] == "public, max-age=300"
     assert client.get("/api/nope").status_code == 404
     docs = client.get("/api/docs")
-    assert docs.status_code == 200 and "cdn.jsdelivr.net" in docs.headers["content-security-policy"]
+    csp = docs.headers["content-security-policy"]
+    assert docs.status_code == 200 and "swagger-ui-dist@5.33.1/" in csp and "'sha256-" in csp
+    assert "unsafe-inline" not in csp.split("style-src")[0]  # inline script allowed by hash only
     assert "cdn.jsdelivr.net" not in r.headers["content-security-policy"]
+    # errors and liveness are never cached
+    assert client.get("/api/v1/severity", params={"county": "dallas"}).headers["cache-control"] == "no-store"
+    assert client.get("/api/health").headers["cache-control"] == "no-store"
     assert client.post("/api/v1/severity").status_code == 405  # read-only API
 
 
@@ -129,3 +134,23 @@ def test_csv_cells_cannot_become_spreadsheet_formulas():
     from roadalyx.api import _csv_safe
     assert _csv_safe("=HYPERLINK(1)") == "'=HYPERLINK(1)"
     assert _csv_safe("19TH ST") == "19TH ST" and _csv_safe(-1) == -1
+
+
+def test_year_filter_clips_the_time_axis_instead_of_showing_zeros():
+    years = get("/api/v1/trends", by="year", year_from=2025)["buckets"]
+    assert [b["key"] for b in years] == [2025]
+    months = get("/api/v1/trends", by="month", year_to=2024)["buckets"]
+    assert months[0]["key"] == "2024-03" and months[-1]["key"] == "2024-12" and months[-1]["complete"]
+
+
+@pytest.mark.parametrize("params", [{}, {"county": "lubbock"}, {"severity": "K,A"}, {"year_from": 2025}, {"county": "hale", "severity": "C"}])
+def test_totals_reconcile_across_endpoints(params):
+    total = get("/api/v1/severity", **params)["total"]
+    assert sum(s["crashes"] for s in get("/api/v1/severity", **params)["severity"]) == total
+    for by in ("year", "month", "hour", "weekday"):
+        t = get("/api/v1/trends", by=by, **params)
+        assert sum(b["crashes"] for b in t["buckets"]) + t["unknown"] == total
+    heat = get("/api/v1/heatmap", **params)
+    assert sum(map(sum, heat["crashes"])) + heat["unknown"] == total
+    assert sum(g["crashes"] for g in get("/api/v1/breakdown", by="county", **params)["groups"]) == total
+    assert get("/api/v1/crashes", **params)["total"] == total

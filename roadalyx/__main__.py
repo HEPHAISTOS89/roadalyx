@@ -17,6 +17,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m roadalyx", description=__doc__.splitlines()[0])
     parser.add_argument("csv", type=Path, help="CRIS query export (CSV)")
     parser.add_argument("--out", type=Path, default=Path("data/processed/crashes.json.gz"))
+    parser.add_argument("--force", action="store_true", help="write the dataset even if the checks fail")
     args = parser.parse_args(argv)
 
     export = cris.read_export(args.csv)
@@ -33,7 +34,10 @@ def main(argv: list[str] | None = None) -> int:
     if conflicts:
         problems.append(f"{conflicts} crashes have person rows that disagree on crash-level fields")
     for p in problems:
-        print(f"WARNING: {p}", file=sys.stderr)
+        print(f"ERROR: {p}", file=sys.stderr)
+    if problems and not args.force:
+        print(f"Nothing written to {args.out}. Fix the export or pass --force.", file=sys.stderr)
+        return 1
 
     meta = {
         "source": "TxDOT Crash Records Information System (CRIS), query export",
@@ -52,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     data = dataset.Dataset(crashes, meta)
     print(report(data))
     print(f"\nWrote {len(crashes):,} crash records to {out} ({out.stat().st_size / 1e6:.1f} MB)")
-    return 1 if problems else 0
+    return 0
 
 
 def report(data: dataset.Dataset) -> str:

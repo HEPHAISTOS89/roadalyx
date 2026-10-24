@@ -150,13 +150,15 @@ def weekday_hour(crashes: list[dict]) -> dict:
     """7 x 24 grid of crash counts (rows Monday..Sunday, columns 00..23 h) for a heat map."""
     grid = [[0] * 24 for _ in range(7)]
     severe = [[0] * 24 for _ in range(7)]
+    unknown = 0
     for c in crashes:
         if c["hour"] is None:
+            unknown += 1
             continue
         grid[c["weekday"]][c["hour"]] += 1
         if c["severity"] in ("K", "A"):
             severe[c["weekday"]][c["hour"]] += 1
-    return {"rows": list(calendar.day_name), "crashes": grid, "ka_crashes": severe}
+    return {"rows": list(calendar.day_name), "crashes": grid, "ka_crashes": severe, "unknown": unknown}
 
 
 def breakdown(crashes: list[dict], by: str, limit: int | None = None) -> dict:

@@ -10,19 +10,24 @@ the selection it was computed on.
 
 from __future__ import annotations
 
+import base64
 import csv
 import gzip
+import hashlib
 import io
 import json
 import os
+import re
 import sys
 import time
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from mangum import Mangum
@@ -40,10 +45,9 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
        "img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data:; "
        "connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; "
        "frame-ancestors 'none'; base-uri 'self'; form-action 'none'")
-# Swagger UI (/api/docs) loads its script and stylesheet from jsDelivr; only that page may.
-DOCS_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-            "style-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com; "
-            "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'")
+# Swagger UI (/api/docs) loads one pinned release from jsDelivr. Its CSP allows that path only,
+# plus the page's own inline start-up script by hash (computed in api_docs below).
+SWAGGER = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.1/"
 SECURITY_HEADERS = {
     "Content-Security-Policy": CSP,
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
@@ -57,7 +61,7 @@ app = FastAPI(
     title="Roadalyx API",
     version="1.0.0",
     summary="Crash analytics for the TxDOT Lubbock District, from a TxDOT CRIS export.",
-    docs_url="/api/docs",
+    docs_url=None,  # served by api_docs() with a pinned Swagger UI
     redoc_url=None,
     openapi_url="/api/openapi.json",
 )
@@ -81,12 +85,14 @@ def data() -> Dataset:
 async def headers_and_access_log(request: Request, call_next):
     started = time.perf_counter()
     response = await call_next(request)
-    response.headers.update(SECURITY_HEADERS)
-    if request.url.path == app.docs_url:
-        response.headers["Content-Security-Policy"] = DOCS_CSP
-    if request.url.path.startswith("/api/") and "cache-control" not in response.headers:
+    response.headers.update({k: v for k, v in SECURITY_HEADERS.items() if k not in response.headers})
+    path = request.url.path
+    if (path.startswith("/api/v1/") and 200 <= response.status_code < 300
+            and "cache-control" not in response.headers):
         # The data changes only on redeploy: let browsers reuse answers for five minutes.
         response.headers["Cache-Control"] = "public, max-age=300"
+    elif path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")  # errors and liveness are never cached
     # One JSON line per request; CloudWatch Logs Insights can query these fields directly.
     print(json.dumps({"method": request.method, "path": request.url.path, "status": response.status_code,
                       "ms": round((time.perf_counter() - started) * 1000, 1)}))
@@ -143,6 +149,20 @@ def _envelope(f: Filters, crashes: list[dict], payload: dict) -> dict:
 
 
 # Endpoints -----------------------------------------------------------------
+
+@app.get("/api/docs", include_in_schema=False)
+def api_docs():
+    page = get_swagger_ui_html(openapi_url=app.openapi_url, title="Roadalyx API",
+                               swagger_js_url=SWAGGER + "swagger-ui-bundle.js",
+                               swagger_css_url=SWAGGER + "swagger-ui.css", swagger_favicon_url="/favicon.svg")
+    html = page.body.decode()
+    inline = [m.group(1) for m in re.finditer(r"<script>(.*?)</script>", html, re.S)]
+    hashes = " ".join(f"'sha256-{base64.b64encode(hashlib.sha256(s.encode()).digest()).decode()}'" for s in inline)
+    page.headers["Content-Security-Policy"] = (
+        f"default-src 'self'; script-src {SWAGGER} {hashes}; style-src {SWAGGER}; img-src 'self' data:; "
+        "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'")
+    return page
+
 
 @app.get("/api/health", tags=["service"], summary="Liveness, data freshness and where this instance runs")
 def health():
@@ -201,7 +221,13 @@ def factors(f: FilterDep, limit: Annotated[int, Query(ge=1, le=100)] = 5):
          summary="Crash counts over time, split by severity")
 def trends(f: FilterDep, by: Literal["year", "month", "hour", "weekday"] = "year"):
     crashes = f.apply(data().crashes)
-    return _envelope(f, crashes, metrics.trend(crashes, by, data().coverage))
+    # Periods outside the requested years are not zeros, they are out of scope: clip the axis to them.
+    start, end = data().coverage
+    if f.year_from is not None:
+        start = max(start, date(f.year_from, 1, 1))
+    if f.year_to is not None:
+        end = min(end, date(f.year_to, 12, 31))
+    return _envelope(f, crashes, metrics.trend(crashes, by, (start, end)))
 
 
 @app.get("/api/v1/heatmap", response_model=schemas.HeatmapResponse, tags=["metrics"],

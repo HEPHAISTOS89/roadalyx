@@ -141,7 +141,8 @@ def build_crashes(persons: pd.DataFrame) -> list[dict]:
         speed = _int(r["Speed Limit"])
         severity = (_text(r["Crash Severity"]) or "")[:1]
         if severity not in SEVERITIES:
-            raise ValueError(f"Crash {crash_id}: unexpected severity {r['Crash Severity']!r}")
+            raise ValueError(f"Crash {crash_id}: severity {r['Crash Severity']!r}; this pipeline covers K, A, B and C "
+                             "crashes, as in the provided export")
         records.append({
             "id": int(crash_id),
             "date": date.date().isoformat(),

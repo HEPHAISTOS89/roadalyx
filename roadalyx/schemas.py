@@ -73,6 +73,7 @@ class HeatmapResponse(Filtered):
     rows: list[str] = Field(description="Monday..Sunday")
     crashes: list[list[int]] = Field(description="7 x 24 counts, columns are hours 0..23.")
     ka_crashes: list[list[int]]
+    unknown: int = Field(description="Crashes without a usable time, left out of the grid.")
 
 
 class BreakdownRow(BaseModel):
