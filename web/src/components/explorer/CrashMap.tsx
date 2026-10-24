@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Map as MlMap, NavigationControl, setWorkerUrl, type GeoJSONSource, type MapLayerMouseEvent, type StyleSpecification } from 'maplibre-gl';
+import { Map as MlMap, NavigationControl, FullscreenControl, setWorkerUrl, type GeoJSONSource, type MapLayerMouseEvent, type StyleSpecification } from 'maplibre-gl';
 // MapLibre 6 runs tile parsing in a module worker; let Vite bundle it so the production build ships it.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -57,6 +57,12 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
     let m: MlMap | null = null;
     let ro: ResizeObserver | null = null;
     let live = true;
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('dialog[open]')) {
+        el.current?.querySelector<HTMLButtonElement>('.maplibregl-ctrl-shrink')?.click();
+      }
+    };
+    document.addEventListener('keydown', escape);
     baseStyle().then((s) => {
       if (!live || !el.current) return;
       m = new MlMap({
@@ -64,6 +70,8 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
         attributionControl: { compact: true }, cooperativeGestures: false, maxPitch: 0, dragRotate: false,
       });
       m.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+      // Expand inside the portal, including browsers that block native fullscreen.
+      m.addControl(new FullscreenControl({ pseudo: true }), 'top-right');
       m.on('load', () => {
         m!.addSource('counties', { type: 'geojson', data: counties as FeatureCollection });
         m!.addLayer({ id: 'county-line', type: 'line', source: 'counties', paint: { 'line-color': '#4a524a', 'line-width': 1 } });
@@ -93,7 +101,11 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
       ro = new ResizeObserver(() => m?.resize());
       ro.observe(el.current);
     }).catch(() => live && setFailed(true));
-    return () => { live = false; ro?.disconnect(); m?.remove(); map.current = null; };
+    return () => {
+      live = false;
+      document.removeEventListener('keydown', escape);
+      ro?.disconnect(); m?.remove(); map.current = null;
+    };
   }, []);
 
   useEffect(() => {
