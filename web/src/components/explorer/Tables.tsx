@@ -44,7 +44,7 @@ export function Breakdown({ query, onFilter }: { query: string; onFilter: (key: 
   return (
     <div className="panel">
       <div className="panel-head">
-        <h2 id="breakdown-h">Where and how</h2>
+        <h2 id="breakdown-h">Breakdown</h2>
         <label className="inline-select">
           <span className="sr-only">Group crashes by</span>
           <select value={dim.by} onChange={(e) => setDim(DIMENSIONS.find((d) => d.by === e.target.value)!)}>
@@ -124,8 +124,8 @@ export function Records({ query, total, onSelect, selected }: { query: string; t
         <table className={`data records${res.loading ? ' stale' : ''}`}>
           <thead>
             <tr>
-              <th scope="col">Date</th><th scope="col">Sev.</th><th scope="col">County</th><th scope="col">Street</th>
-              <th scope="col">Road class</th><th scope="col">First factor</th><th scope="col" className="num-col">People</th>
+              <th scope="col">Date</th><th scope="col">Sev</th><th scope="col">County</th><th scope="col">Street</th>
+              <th scope="col">Road class</th><th scope="col">First factor</th><th scope="col" className="num-col">Persons</th>
             </tr>
           </thead>
           <tbody>
@@ -179,8 +179,8 @@ export function CrashCard({ id, onClose }: { id: number; onClose: () => void }) 
           <dl className="kv">
             <dt>Killed</dt><dd>{c.deaths}</dd>
             <dt>Seriously injured</dt><dd>{c.serious_injuries}</dd>
-            <dt>Injured, not killed</dt><dd>{c.injuries}</dd>
-            <dt>People involved</dt><dd>{c.people}</dd>
+            <dt>Injured (not killed)</dt><dd>{c.injuries}</dd>
+            <dt>Persons involved</dt><dd>{c.people}</dd>
             <dt>Road users</dt><dd>{c.vru.length ? c.vru.map(title).join(', ') : 'Vehicle occupants only'}</dd>
             <dt>Factors</dt><dd>{c.factors.map(title).join('; ') || '–'}</dd>
             <dt>Collision</dt><dd>{title(c.collision)}</dd>
@@ -195,7 +195,7 @@ export function CrashCard({ id, onClose }: { id: number; onClose: () => void }) 
             <dt>Location</dt><dd className="mono">{c.lat != null ? `${c.lat.toFixed(5)}, ${c.lon!.toFixed(5)}` : 'Not recorded'}</dd>
           </dl>
           <a className="btn small" href={`/api/v1/crashes/${id}`} target="_blank" rel="noreferrer">
-            <ArrowSquareOutIcon aria-hidden="true" />This record in the API
+            <ArrowSquareOutIcon aria-hidden="true" />JSON
           </a>
         </>
       )}

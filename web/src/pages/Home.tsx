@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRightIcon } from '@phosphor-icons/react';
 import Hero from '../components/world/Hero';
 import { useApi } from '../lib/api';
-import { county, int, pct, title } from '../lib/format';
-import type { BreakdownRes, FactorsRes, Meta, SeverityRes, TrendRes } from '../lib/types';
+import { county, pct, title } from '../lib/format';
+import type { BreakdownRes, FactorsRes, Meta, TrendRes } from '../lib/types';
 import '../styles/home.css';
 
 const ka = (g: { K: number; A: number; crashes: number }) => (g.crashes ? (g.K + g.A) / g.crashes : 0);
@@ -33,21 +33,16 @@ function Hours({ values }: { values: number[] }) {
   );
 }
 
-/** One county's share of all crashes. */
-function Share({ part, total }: { part: number; total: number }) {
-  return <div className="mini-share"><i style={{ width: `${(part / total) * 100}%` }} /></div>;
-}
 
 /** Findings are computed from the live API each time; the sentences only frame the numbers. */
 function Findings() {
-  const sev = useApi<SeverityRes>('/api/v1/severity');
   const rural = useApi<BreakdownRes>('/api/v1/breakdown?by=rural');
   const hours = useApi<TrendRes>('/api/v1/trends?by=hour');
   const factors = useApi<FactorsRes>('/api/v1/factors?limit=10');
   const counties = useApi<BreakdownRes>('/api/v1/breakdown?by=county');
-  const error = [sev, rural, hours, factors, counties].find((r) => r.error)?.error;
+  const error = [rural, hours, factors, counties].find((r) => r.error)?.error;
   if (error) return <p className="error-box">The findings could not be loaded ({error}).</p>;
-  if (!sev.data || !rural.data || !hours.data || !factors.data || !counties.data) {
+  if (!rural.data || !hours.data || !factors.data || !counties.data) {
     return <div className="findings" aria-busy="true">{[0, 1, 2, 3].map((i) => <div key={i} className="finding skeleton" />)}</div>;
   }
 
@@ -58,38 +53,39 @@ function Findings() {
   const sum = (bs: typeof night) => bs.reduce((a, b) => ({ K: a.K + b.K, A: a.A + b.A, crashes: a.crashes + b.crashes }), { K: 0, A: 0, crashes: 0 });
   const n = sum(night), d = sum(day);
   const top = factors.data.factors[0];
-  const deadliest = [...factors.data.factors].sort((a, b) => b.ka_share - a.ka_share)[0];
+  const severest = [...factors.data.factors].sort((a, b) => b.ka_share - a.ka_share)[0];
+  // County shares below 100 crashes swing too much to rank.
+  const ranked = counties.data.groups.filter((g) => g.crashes >= 100).sort((a, b) => ka(b) - ka(a));
+  const worst = ranked[0];
   const lbk = counties.data.groups[0];
-  const rest = counties.data.groups.slice(1).filter((g) => g.crashes >= 100).sort((a, b) => ka(b) - ka(a))[0];
-  const k = sev.data.severity[0];
+  const name = (f: string) => `“${title(f).toLowerCase()}”`;
 
   return (
     <div className="findings">
-      <Finding figure={`${(ka(r) / ka(u)).toFixed(1)}×`} label="as likely to be fatal or serious when rural"
-        to="/explorer?severity=K,A" cta="Map the K and A crashes"
+      <Finding figure={`${(ka(r) / ka(u)).toFixed(1)}×`} label="higher K + A share on rural roads"
+        to="/explorer?severity=K,A" cta="K and A crashes on the map"
         chart={<Bars rows={[{ label: 'Urban', v: ka(u) }, { label: 'Rural', v: ka(r), hot: true }]} />}>
-        {pct(ka(r))} of rural crashes are K or A, against {pct(ka(u))} in urban areas. Rural roads carry
-        {' '}{pct(r.crashes / (r.crashes + u.crashes), 0)} of the crashes and {pct((r.K + r.A) / (r.K + r.A + u.K + u.A), 0)} of the fatal and serious ones.
+        Rural: {pct(r.crashes / (r.crashes + u.crashes), 0)} of crashes, {pct((r.K + r.A) / (r.K + r.A + u.K + u.A), 0)} of K and A crashes.
       </Finding>
-      <Finding figure={pct(ka(n), 0)} label="of night crashes are K or A (21:00–06:59)"
-        to="/explorer?severity=K,A#when" cta="See the hour-by-day grid"
+      <Finding figure={pct(ka(n), 0)} label="K + A share at night, 21:00–06:59"
+        to="/explorer?severity=K,A#when" cta="Hour-by-day grid"
         chart={<Hours values={hours.data.buckets.map((b) => ka(b))} />}>
-        Night brings {pct(n.crashes / (n.crashes + d.crashes), 0)} of the crashes but they are worse: {pct(ka(n), 0)} fatal or
-        serious, against {pct(ka(d), 0)} between 07:00 and 20:59.
+        Night: {pct(n.crashes / (n.crashes + d.crashes), 0)} of crashes. Daytime K + A share: {pct(ka(d), 0)}.
       </Finding>
-      <Finding figure={pct(top.share, 0)} label={`of crashes cite “${title(top.factor).toLowerCase()}”`}
-        to={`/explorer?factor=${encodeURIComponent(deadliest.factor.toLowerCase())}`} cta={`Explore “${title(deadliest.factor).toLowerCase()}”`}
-        chart={<Bars rows={[{ label: 'Most cited', v: top.ka_share }, { label: 'Most severe', v: deadliest.ka_share, hot: true }]} />}>
-        The most cited contributing factor is not the most severe. Among the ten most cited, “{title(deadliest.factor).toLowerCase()}”
-        has the highest share of K and A crashes: {pct(deadliest.ka_share, 0)}, against {pct(top.ka_share, 0)}.
+      <Finding figure={pct(severest.ka_share, 0)} label={`K + A share of crashes citing ${name(severest.factor)}`}
+        to={`/explorer?factor=${encodeURIComponent(severest.factor.toLowerCase())}`} cta={`Crashes citing ${name(severest.factor)}`}
+        chart={<Bars rows={[{ label: 'Most cited', v: top.ka_share }, { label: 'Most severe', v: severest.ka_share, hot: true }]} />}>
+        Highest among the ten most cited factors. {title(top.factor)}, cited most ({pct(top.share, 0)} of crashes): {pct(top.ka_share, 0)}.
       </Finding>
-      <Finding figure={pct(lbk.crashes / counties.data.total, 0)} label={`of crashes are in ${county(String(lbk.value))} County`}
-        to={`/explorer?county=${rest ? String(rest.value).toLowerCase() : ''}`} cta={rest ? `Open ${county(String(rest.value))} County` : 'Open the Explorer'}
-        chart={<Share part={lbk.crashes} total={counties.data.total} />}>
-        Volume and severity point to different counties. {county(String(lbk.value))} has {pct(ka(lbk))} K or A crashes;
-        {rest ? <> {county(String(rest.value))} has {pct(ka(rest))}, the highest of the counties with at least 100 crashes.</> : null}
-        {' '}In all, {int(k.crashes)} crashes killed {int(sev.data.deaths)} people.
-      </Finding>
+      {worst && (
+        <Finding figure={pct(ka(worst))} label={`K + A share in ${county(String(worst.value))} County, the district's highest`}
+          to={`/explorer?county=${String(worst.value).toLowerCase()}`} cta={`${county(String(worst.value))} County`}
+          chart={<Bars rows={[...ranked.slice(0, 3).map((g, i) => ({ label: county(String(g.value)), v: ka(g), hot: i === 0 })),
+            { label: county(String(lbk.value)), v: ka(lbk) }]} />}>
+          {county(String(lbk.value))} County has {pct(lbk.crashes / counties.data.total, 0)} of the crashes and a {pct(ka(lbk))} K + A share.
+          Counties with fewer than 100 crashes are not ranked.
+        </Finding>
+      )}
     </div>
   );
 }
@@ -111,7 +107,7 @@ export default function Home() {
     <>
       <Hero meta={meta.data} />
       <section className="section" aria-labelledby="find-h">
-        <h2 id="find-h" className="find-title">What the crashes say</h2>
+        <h2 id="find-h" className="find-title">Findings</h2>
         <Findings />
       </section>
     </>

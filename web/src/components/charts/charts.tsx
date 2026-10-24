@@ -5,7 +5,8 @@ import { int, pct, title } from '../../lib/format';
 import { SEVS, type Bucket, type FactorRow, type HeatmapRes, type SeverityRes, type Sev } from '../../lib/types';
 
 const SEV_VAR: Record<Sev, string> = { K: 'var(--sev-k)', A: 'var(--sev-a)', B: 'var(--sev-b)', C: 'var(--sev-c)' };
-const SEV_NAME: Record<Sev, string> = { K: 'Fatal', A: 'Serious injury', B: 'Minor injury', C: 'Possible injury' };
+// CRIS KABCO terms
+const SEV_NAME: Record<Sev, string> = { K: 'Fatal', A: 'Suspected serious', B: 'Suspected minor', C: 'Possible injury' };
 
 function niceMax(v: number) {
   return scaleLinear().domain([0, Math.max(v, 1)]).nice(4).domain()[1];
@@ -38,7 +39,7 @@ export function FactorBars({ rows, total, onPick, active }: { rows: FactorRow[];
   return (
     <div className="factors">
       <div className="factors-head" aria-hidden="true">
-        <span>Contributing factor</span><span>Crashes citing it</span><span>Share K + A</span>
+        <span>Contributing factor</span><span>Crashes</span><span>K + A share</span>
       </div>
       {rows.length === 0 && <p className="empty-note">No coded factor in this selection.</p>}
       <ol>

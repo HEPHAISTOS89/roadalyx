@@ -16,7 +16,7 @@ export function Mark({ size = 22 }: { size?: number }) {
 }
 
 const TITLES: Record<string, string> = {
-  '/': 'Roadalyx · Lubbock District crash analytics',
+  '/': 'Roadalyx · Lubbock District injury crashes',
   '/explorer': 'Explorer · Roadalyx',
   '/platform': 'Platform · Roadalyx',
 };
@@ -47,10 +47,8 @@ export default function Shell({ children }: { children: ReactNode }) {
       <main id="main" tabIndex={-1}>{children}</main>
       <footer className="foot">
         <div>
-          <p><Mark size={18} /> <b>Roadalyx</b>: injury crashes in the TxDOT Lubbock District, from a TxDOT Crash Records
-            Information System (CRIS) query export provided by TransTech Lab, Texas Tech University.</p>
-          <p className="muted">TxDOT makes no warranty about the accuracy of CRIS data. Counts are reported crashes with a
-            K, A, B or C injury; they are not rates. County lines: US Census Bureau.</p>
+          <p>Source: TxDOT CRIS query export, Lubbock District, supplied by TransTech Lab, Texas Tech University. County lines: US Census Bureau.</p>
+          <p className="muted">Reported K, A, B and C injury crashes; counts, not rates. TxDOT makes no warranty of CRIS accuracy.</p>
         </div>
         <ul>
           <li><a href="/api/docs">API reference</a></li>

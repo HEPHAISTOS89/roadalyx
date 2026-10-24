@@ -4,7 +4,7 @@ import { county, title } from '../../lib/format';
 import { isEmpty, NO_FILTERS, type Filters } from '../../lib/filters';
 import { SEVS, type Meta, type Sev } from '../../lib/types';
 
-const SEV_NAME: Record<Sev, string> = { K: 'Fatal', A: 'Serious', B: 'Minor', C: 'Possible' };
+const SEV_NAME: Record<Sev, string> = { K: 'Fatal', A: 'Susp. serious', B: 'Susp. minor', C: 'Possible' };
 const VRU = [
   { value: 'pedestrian', label: 'Pedestrian' },
   { value: 'pedalcyclist', label: 'Cyclist' },

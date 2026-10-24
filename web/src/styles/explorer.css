@@ -110,7 +110,7 @@
 
 /* Horizontal bars */
 .hbars { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.hbars li button { width: 100%; display: grid; grid-template-columns: 150px 1fr 96px; gap: 12px; align-items: center; font-size: var(--t-label);
+.hbars li button { width: 100%; display: grid; grid-template-columns: 168px 1fr 96px; gap: 12px; align-items: center; font-size: var(--t-label);
   border: 0; background: none; padding: 5px 6px; border-radius: var(--r-s); text-align: left; }
 .hbars li button:hover { background: var(--raise); }
 .hbars li button.on { background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 2px 0 0 var(--accent); }

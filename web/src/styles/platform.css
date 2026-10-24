@@ -13,7 +13,10 @@
 .pf-stats dt { font-size: var(--t-label); color: var(--ink-3); }
 .pf-stats dd { margin: 0; font-size: var(--t-label); color: var(--ink-3); }
 .pf-stats b { font-size: 1.375rem; font-weight: 560; color: var(--ink); letter-spacing: -0.02em; }
-@media (max-width: 900px) { .pf-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+  .pf-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pf-stats > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
 
 .pf-sec { display: grid; gap: var(--s4); }
 .pf-sec h2 { font-size: var(--t-h2); }
@@ -72,6 +75,7 @@
   .ar-panel { grid-template-columns: auto minmax(0, 1fr); }
   .ar-panel .chips { grid-column: 1 / -1; justify-content: flex-start; }
 }
+@media (max-width: 560px) { .ar-grid { grid-template-columns: 1fr; } .ar { padding: var(--s4); } }
 
 /* Validation */
 .ledger { border-collapse: collapse; width: 100%; font-size: var(--t-ui); }

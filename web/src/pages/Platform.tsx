@@ -105,8 +105,8 @@ export default function Platform() {
         <h2 id="lim-h">Limits</h2>
         <ul className="pf-limits">
           <li><b>Injury crashes only.</b> No property-damage-only (O) crashes in the export.</li>
-          <li><b>Counts, not rates.</b> No traffic volume (AADT, VMT) to normalise by.</li>
-          <li><b>2026 is partial.</b> Data ends {meta.data ? dateLong(meta.data.coverage.end) : '…'}; late reports still arrive.</li>
+          <li><b>Counts, not rates.</b> No traffic volume (AADT, VMT) to normalize by.</li>
+          <li><b>2026 is partial.</b> Data through {meta.data ? dateLong(meta.data.coverage.end) : '…'}; late reports are added.</li>
           <li><b>No throttling.</b> Only the account's Lambda concurrency caps a burst of requests.</li>
         </ul>
       </section>

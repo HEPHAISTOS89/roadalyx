@@ -15,11 +15,8 @@ type Flow = 'data' | 'request' | 'logs' | 'deploy';
 type Id = 'csv' | 'pipeline' | 's3' | 'lambda' | 'url' | 'client' | 'cfn' | 'iam' | 'logs';
 interface Spec { id: Id; icon: ReactNode; title: string; service: string; col: string; row: string; does: string; why: string; config: string[] }
 
-// Facts restate infra/template.yaml and scripts/deploy.sh; each node's status line comes from the live API.
+// Listed in data-flow order (the reading order on narrow screens). Facts restate infra/template.yaml and scripts/deploy.sh; each node's status line comes from the live API.
 const NODES: Spec[] = [
-  { id: 'iam', icon: <ShieldCheckIcon />, title: 'IAM role', service: 'least privilege', col: '3 / 6', row: '1',
-    does: 'Lambda hands the function short-lived credentials for this role.', why: 'No access key exists in the code, the repository or the bundle.',
-    config: ['s3:GetObject on data/crashes.json.gz', 'logs:CreateLogStream', 'logs:PutLogEvents'] },
   { id: 'csv', icon: <FileCsvIcon />, title: 'CRIS export', service: 'district_crashes.csv', col: '1', row: '2',
     does: 'One row per person involved, under an 11-line header.', why: 'Stays on the laptop: it holds person-level records.',
     config: ['not committed', 'not uploaded'] },
@@ -27,10 +24,10 @@ const NODES: Spec[] = [
     does: 'One record per Crash ID, cleaned fields, counts checked against the export header.', why: 'Cleaning runs once, offline, under tests; a failed check writes nothing.',
     config: ['pandas', 'pytest', 'crashes.json.gz'] },
   { id: 's3', icon: <DatabaseIcon />, title: 'S3', service: 'private bucket', col: '3', row: '2',
-    does: 'Holds the processed dataset and the code packages.', why: 'New data ships without a code release.',
+    does: 'Holds the processed dataset and the code packages.', why: 'Data and code are published separately.',
     config: ['Block Public Access', 'SSE-S3', 'TLS only', 'last 2 releases kept'] },
   { id: 'lambda', icon: <LightningIcon />, title: 'Lambda', service: 'FastAPI + Mangum', col: '4', row: '2',
-    does: 'Loads the dataset once per cold start, filters it in memory, serves the API and this portal.', why: '24,000 records filter in milliseconds; an idle function costs nothing.',
+    does: 'Loads the dataset once per cold start, filters it in memory, serves the API and this portal.', why: 'The records filter in memory in milliseconds; no database to run.',
     config: ['python3.13', 'arm64', '1024 MB', '10 s timeout'] },
   { id: 'url', icon: <GlobeSimpleIcon />, title: 'Function URL', service: 'public HTTPS', col: '5', row: '2',
     does: 'Sends HTTPS requests straight to the function.', why: 'A read-only public API needs no API Gateway.',
@@ -38,11 +35,14 @@ const NODES: Spec[] = [
   { id: 'client', icon: <BrowsersIcon />, title: 'Clients', service: 'portal · curl · pandas', col: '6', row: '2',
     does: 'This portal and any script call the same endpoints.', why: 'One origin, so the portal needs no CORS.',
     config: ['/api/v1/*', '/api/docs'] },
+  { id: 'iam', icon: <ShieldCheckIcon />, title: 'IAM role', service: 'Lambda execution role', col: '3 / 6', row: '1',
+    does: 'Lambda hands the function short-lived credentials for this role.', why: 'No access key in the code, the repository or the bundle.',
+    config: ['s3:GetObject on data/crashes.json.gz', 'logs:CreateLogStream', 'logs:PutLogEvents'] },
   { id: 'cfn', icon: <StackIcon />, title: 'CloudFormation', service: 'stack roadalyx', col: '3', row: '3',
     does: 'Creates the role, function, URL, permissions and log group.', why: 'The deployment is code; tests run before every deploy.',
     config: ['infra/template.yaml', 'scripts/deploy.sh'] },
   { id: 'logs', icon: <ChartLineIcon />, title: 'CloudWatch Logs', service: 'one line per request', col: '4 / 6', row: '3',
-    does: 'Records method, path, status and duration of each request.', why: 'Enough to see what is slow or failing, at no cost here.',
+    does: 'Records method, path, status and duration of each request.', why: 'Queryable with CloudWatch Logs Insights to find slow or failing calls.',
     config: ['/aws/lambda/roadalyx-api', '14-day retention'] },
 ];
 const EDGES: { from: Id; to: Id; flow: Flow }[] = [
@@ -137,7 +137,7 @@ export default function Architecture({ meta, health, rtt, ping }: {
     s3: meta ? `updated ${new Date(meta.dataset.processed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : '…',
     lambda: health ? (aws ? `up ${age} · ${health.runtime.memory_mb} MB` : 'local uvicorn') : '…',
     url: rtt != null ? `${Math.round(rtt)} ms from you` : '…',
-    client: 'you are here',
+    client: 'this browser',
     cfn: aws ? 'deployed' : 'local run',
     logs: aws ? '14-day retention' : 'stdout',
   };

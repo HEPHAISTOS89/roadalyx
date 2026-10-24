@@ -158,20 +158,18 @@ export default function Hero({ meta }: { meta: Meta | null }) {
         {broken && (
           <p className="hero-fallback">
             {pts.error ? 'The crash data could not be loaded. Reload the page to try again.'
-              : 'This browser cannot draw the 3D map (WebGL 2 is off or unavailable). The Explorer has every figure and a 2D map.'}
+              : 'WebGL 2 is unavailable, so the 3D map is off. The Explorer has the same figures and a 2D map.'}
           </p>
         )}
-        {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">Drag to turn · click a county</p>}
+        {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">Drag to rotate · click a county</p>}
       </div>
 
       <div className="hero-copy">
-        <h1 id="hero-h">Every injury crash in the Lubbock District since 2020, where it happened.</h1>
-        <dl className="hero-scope">
-          <div><dt>Crashes</dt><dd className="num">{pts.data ? int(pts.data.total) : '–'}</dd></div>
-          <div><dt>Severity</dt><dd>K, A, B, C</dd></div>
-          <div><dt>Counties</dt><dd className="num">{meta ? meta.filters.county.length : '–'}</dd></div>
-          <div><dt>Period</dt><dd>{meta ? `${dateLong(meta.coverage.start)} – ${dateLong(meta.coverage.end)}` : '–'}</dd></div>
-        </dl>
+        <h1 id="hero-h">Injury crashes in the TxDOT Lubbock District, 2020–2026</h1>
+        <p className="hero-scope">
+          {pts.data ? int(pts.data.total) : '…'} crashes (K, A, B, C) · {meta ? meta.filters.county.length : '…'} counties ·{' '}
+          {meta ? `${dateLong(meta.coverage.start)} – ${dateLong(meta.coverage.end)}` : '…'} · TxDOT CRIS
+        </p>
         <div className="actions">
           <Link className="btn primary" to="/explorer">Open the Explorer</Link>
           <Link className="btn" to="/platform">How it is built</Link>
@@ -220,11 +218,11 @@ export default function Hero({ meta }: { meta: Meta | null }) {
         </label>
         <p className="hud-date num">{date ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ' '}</p>
         <dl className="hud-counts">
-          <div title={pts.data ? `${int(pts.data.total - pts.data.located)} crashes have no coordinates in CRIS: they count in every figure but cannot be drawn.` : undefined}>
+          <div title={pts.data ? `${int(pts.data.total - pts.data.located)} crashes have no coordinates: counted in all figures, not drawn.` : undefined}>
             <dt>On the map</dt><dd className="num">{days ? int(upTo(days.all, shownDay)) : '–'}</dd>
           </div>
           <div><dt><i className="sw k" />Fatal (K)</dt><dd className="num">{days ? int(upTo(days.K, shownDay)) : '–'}</dd></div>
-          <div><dt><i className="sw a" />Serious (A)</dt><dd className="num">{days ? int(upTo(days.A, shownDay)) : '–'}</dd></div>
+          <div><dt><i className="sw a" />Suspected serious (A)</dt><dd className="num">{days ? int(upTo(days.A, shownDay)) : '–'}</dd></div>
         </dl>
       </div>
     </section>

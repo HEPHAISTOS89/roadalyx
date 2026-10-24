@@ -122,7 +122,7 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
     <div className="map" ref={el} role="region" aria-label="Crash map. Click a crash mark to open its record; the records table below lists the same crashes.">
       {failed && <p className="map-msg">The map could not be drawn (WebGL unavailable or the basemap unreachable). Every chart and table on this page still works.</p>}
       <ul className="map-legend" aria-label="Severity legend">
-        <li><i className="sw k" />K fatal</li><li><i className="sw a" />A serious</li><li><i className="sw b" />B minor</li><li><i className="sw c" />C possible</li>
+        <li><i className="sw k" />K fatal</li><li><i className="sw a" />A suspected serious</li><li><i className="sw b" />B suspected minor</li><li><i className="sw c" />C possible</li>
       </ul>
     </div>
   );

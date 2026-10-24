@@ -6,7 +6,7 @@
 .hero-stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
 .hero-stage canvas:active { cursor: grabbing; }
 .hero-stage[data-state='loading']::after {
-  content: 'Loading 24,000 crash locations…'; position: absolute; left: 50%; top: 55%; transform: translateX(-50%);
+  content: 'Loading crash locations…'; position: absolute; left: 50%; top: 55%; transform: translateX(-50%);
   color: var(--ink-3); font-size: var(--t-label);
 }
 .hero-labels { position: absolute; inset: 0; pointer-events: none; }
@@ -28,7 +28,7 @@
   display: grid; gap: var(--s4); pointer-events: none;
 }
 .hero-copy > * { pointer-events: auto; }
-.hero-copy h1 { font-size: clamp(2rem, 1.2rem + 2.6vw, 3.6rem); line-height: 1.02; letter-spacing: -0.035em; font-weight: 580; text-shadow: 0 2px 24px #0b0c0b; }
+.hero-copy h1 { font-size: clamp(2rem, 1.2rem + 2.4vw, 3.4rem); line-height: 1.02; letter-spacing: -0.035em; font-weight: 580; text-shadow: 0 2px 24px #0b0c0b; }
 .hero-copy .lede { text-shadow: 0 1px 12px #0b0c0b; }
 .actions { display: flex; gap: var(--s3); flex-wrap: wrap; margin-top: var(--s2); }
 
@@ -68,10 +68,7 @@
 }
 @media (max-width: 700px) { .hud-years i:nth-child(even) { display: none; } }
 
-.hero-scope { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5); margin: 0; }
-.hero-scope div { display: grid; gap: 0; }
-.hero-scope dt { font-size: var(--t-micro); color: var(--ink-3); }
-.hero-scope dd { margin: 0; font-size: var(--t-ui); color: var(--ink); text-shadow: 0 1px 10px #0b0c0b; }
+.hero-scope { font-size: var(--t-ui); color: var(--ink-2); text-shadow: 0 1px 10px #0b0c0b; font-variant-numeric: tabular-nums; }
 .hero-side { position: absolute; z-index: 3; right: var(--gutter); top: clamp(28px, 6vh, 72px); display: grid; gap: var(--s3); justify-items: end; width: min(300px, calc(100% - 2 * var(--gutter))); }
 .hero-side .hero-views { position: static; }
 .hero-county {

@@ -31,8 +31,8 @@ function Scope({ meta, total, located }: { meta: Meta; total: number | null; loc
   return (
     <p className="scope" aria-live="polite">
       <b className="num">{total == null ? '…' : int(total)}</b> injury crashes · {parts.join(' · ')}
-      {located != null && total != null && total > located ? <span className="muted"> · {int(total - located)} without coordinates are left off the map</span> : null}
-      {total === 0 && <span className="scope-empty"> · nothing matches: widen or reset the filters</span>}
+      {located != null && total != null && total > located ? <span className="muted"> · {int(total - located)} have no coordinates (not mapped)</span> : null}
+      {total === 0 && <span className="scope-empty"> · No crashes match.</span>}
     </p>
   );
 }
@@ -75,9 +75,9 @@ export default function Explorer() {
 
         <dl className="kpis" aria-label="Key figures">
           <div><dt>Injury crashes</dt><dd><b className="num">{int(s?.total)}</b></dd></div>
-          <div><dt><i className="sw k" />Fatal crashes (K)</dt><dd><b className="num">{int(k?.crashes)}</b><small>{int(s?.deaths)} people killed</small></dd></div>
-          <div><dt><i className="sw a" />Serious-injury crashes (A)</dt><dd><b className="num">{int(a?.crashes)}</b><small>{int(s?.serious_injuries)} people seriously injured</small></dd></div>
-          <div><dt>Fatal or serious</dt><dd><b className="num">{pct(s?.ka_share)}</b><small>K + A share of crashes</small></dd></div>
+          <div><dt><i className="sw k" />Fatal (K)</dt><dd><b className="num">{int(k?.crashes)}</b><small>{int(s?.deaths)} people killed</small></dd></div>
+          <div><dt><i className="sw a" />Suspected serious (A)</dt><dd><b className="num">{int(a?.crashes)}</b><small>{int(s?.serious_injuries)} people seriously injured</small></dd></div>
+          <div><dt>K + A share</dt><dd><b className="num">{pct(s?.ka_share)}</b></dd></div>
         </dl>
 
         <div className="grid-main">
