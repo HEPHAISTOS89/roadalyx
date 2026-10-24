@@ -29,6 +29,10 @@ class Dataset:
     meta: dict
 
     def __post_init__(self):
+        if not self.crashes:
+            raise ValueError("The dataset contains no crash records.")
+        if len({c["id"] for c in self.crashes}) != len(self.crashes):
+            raise ValueError("The dataset contains a duplicate Crash ID.")
         dates = [c["date"] for c in self.crashes]
         self.coverage = (date.fromisoformat(min(dates)), date.fromisoformat(max(dates)))
         self.by_id = {c["id"]: c for c in self.crashes}

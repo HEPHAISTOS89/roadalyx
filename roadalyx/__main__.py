@@ -19,7 +19,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=Path("data/processed/crashes.json.gz"))
     parser.add_argument("--force", action="store_true", help="write the dataset even if the checks fail")
     args = parser.parse_args(argv)
+    try:
+        return _process(args)
+    except (ValueError, OSError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
 
+
+def _process(args: argparse.Namespace) -> int:
     export = cris.read_export(args.csv)
     persons = export.persons
     conflicts = cris.conflicting_crashes(persons)
@@ -52,9 +59,11 @@ def main(argv: list[str] | None = None) -> int:
         "unknown_speed_limit": sum(1 for c in crashes if c["speed_limit"] is None),
         "processed_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
     }
-    out = dataset.save(args.out, crashes, meta)
+    # Check the dataset and compute the report before replacing an existing output file.
     data = dataset.Dataset(crashes, meta)
-    print(report(data))
+    summary = report(data)
+    out = dataset.save(args.out, crashes, meta)
+    print(summary)
     print(f"\nWrote {len(crashes):,} crash records to {out} ({out.stat().st_size / 1e6:.1f} MB)")
     return 0
 

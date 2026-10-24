@@ -1,5 +1,7 @@
 """Cleaning and metric rules, checked on a small synthetic export and, when present, on the real file."""
 
+import csv
+
 from datetime import date
 from pathlib import Path
 
@@ -118,3 +120,53 @@ def test_real_export_matches_its_own_header():
     for by in ("year", "month", "hour", "weekday"):
         t = metrics.trend(records, by, data.coverage)
         assert sum(b["crashes"] for b in t["buckets"]) + t["unknown"] == len(records)
+
+
+@pytest.mark.parametrize("column,value", [
+    ("Crash Date", ""), ("Crash Date", "No Data"), ("Crash Date", "2024-02-30"),
+    ("Crash ID", ""), ("Crash ID", "abc"), ("Crash ID", "0"),
+])
+def test_missing_or_invalid_required_fields_are_rejected(export, column, value):
+    persons = export.persons.copy()
+    persons[column] = value
+    with pytest.raises(ValueError, match=column):
+        cris.build_crashes(persons)
+
+
+@pytest.mark.parametrize("force", [False, True])
+@pytest.mark.parametrize("case", ["date", "id", "empty"])
+def test_cli_keeps_existing_output_when_input_is_invalid(export, tmp_path, capsys, case, force):
+    persons = export.persons.copy()
+    if case == "empty":
+        persons = persons.iloc[:0]
+    else:
+        persons["Crash Date" if case == "date" else "Crash ID"] = ""
+    source = FIXTURE.read_text(encoding="utf-8-sig")
+    preamble = source[:source.index('"Crash ID"')]
+    bad = tmp_path / "bad.csv"
+    bad.write_text(preamble + persons.to_csv(index=False, quoting=csv.QUOTE_ALL), encoding="utf-8")
+    out = tmp_path / "crashes.json.gz"
+    out.write_bytes(b"previous valid dataset")
+    args = [str(bad), "--out", str(out)] + (["--force"] if force else [])
+    assert main(args) == 1
+    assert out.read_bytes() == b"previous valid dataset"
+    assert "ERROR:" in capsys.readouterr().err
+
+
+def test_cli_validates_dataset_before_replacing_output(tmp_path, monkeypatch, capsys):
+    def reject_dataset(*args):
+        raise ValueError("dataset validation failed")
+    monkeypatch.setattr("roadalyx.dataset.Dataset", reject_dataset)
+    out = tmp_path / "crashes.json.gz"
+    out.write_bytes(b"previous valid dataset")
+    assert main([str(FIXTURE), "--out", str(out)]) == 1
+    assert out.read_bytes() == b"previous valid dataset"
+    assert "dataset validation failed" in capsys.readouterr().err
+
+
+def test_dataset_rejects_empty_input_and_duplicate_ids(crashes):
+    with pytest.raises(ValueError, match="no crash records"):
+        Dataset([], {})
+    records = list(crashes.values())
+    with pytest.raises(ValueError, match="duplicate Crash ID"):
+        Dataset([records[0], records[0]], {})

@@ -126,6 +126,8 @@ def conflicting_crashes(persons: pd.DataFrame) -> int:
 
 def build_crashes(persons: pd.DataFrame) -> list[dict]:
     """Collapse person rows to one record per crash, with cleaned, typed fields."""
+    if persons.empty:
+        raise ValueError("The export contains no person rows.")
     people = persons.groupby("Crash ID").size()
     person_type = persons["Person Type"].str.split(" - ").str[0].map(VRU_PERSON_TYPES)
     vru = person_type.dropna().groupby(persons["Crash ID"]).agg(lambda s: sorted(set(s)))
@@ -134,7 +136,15 @@ def build_crashes(persons: pd.DataFrame) -> list[dict]:
     for row in persons.drop_duplicates("Crash ID")[CRASH_COLUMNS].itertuples(index=False):
         r = dict(zip(CRASH_COLUMNS, row))
         crash_id = r["Crash ID"]
-        date = pd.Timestamp(r["Crash Date"])
+        id_text = str(crash_id).strip()
+        if not re.fullmatch(r"[0-9]+", id_text) or int(id_text) == 0:
+            raise ValueError(f"Missing or invalid Crash ID: {crash_id!r}")
+        try:
+            date = pd.Timestamp(r["Crash Date"])
+        except (ValueError, TypeError):
+            date = pd.NaT
+        if pd.isna(date):
+            raise ValueError(f"Crash {crash_id}: missing or invalid Crash Date {r['Crash Date']!r}")
         hhmm = _int(r["Crash Time"])  # HHMM as an integer: 5 is 00:05, 1730 is 17:30
         if hhmm is not None and not (0 <= hhmm <= 2359 and hhmm % 100 < 60):
             hhmm = None
