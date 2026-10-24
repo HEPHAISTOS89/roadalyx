@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowSquareOutIcon, DownloadSimpleIcon, XIcon } from '@phosphor-icons/react';
 import { useApi } from '../../lib/api';
 import { county, dateLong, int, pct, title } from '../../lib/format';
@@ -52,8 +52,9 @@ export function Breakdown({ query, onFilter }: { query: string; onFilter: (key: 
           </select>
         </label>
       </div>
-      {res.error && <p className="error-box">{res.error}</p>}
-      <div className="table-wrap" tabIndex={0} role="region" aria-labelledby="breakdown-h">
+      {res.error && <p className="error-box" role="alert">{res.error}</p>}
+      {res.loading && <p className="panel-meta" role="status">Loading data…</p>}
+      <div className="table-wrap" tabIndex={0} role="region" aria-busy={res.loading} aria-labelledby="breakdown-h">
         <table className={`data${res.loading ? ' stale' : ''}`}>
           <thead>
             <tr>
@@ -119,8 +120,9 @@ export function Records({ query, total, onSelect, selected }: { query: string; t
           </a>
         </div>
       </div>
-      {res.error && <p className="error-box">{res.error}</p>}
-      <div className="table-wrap" tabIndex={0} role="region" aria-labelledby="records-h">
+      {res.error && <p className="error-box" role="alert">{res.error}</p>}
+      {res.loading && <p className="panel-meta" role="status">Loading data…</p>}
+      <div className="table-wrap" tabIndex={0} role="region" aria-busy={res.loading} aria-labelledby="records-h">
         <table className={`data records${res.loading ? ' stale' : ''}`}>
           <thead>
             <tr>
@@ -149,9 +151,9 @@ export function Records({ query, total, onSelect, selected }: { query: string; t
         </table>
       </div>
       <div className="pager">
-        <button type="button" className="btn small" onClick={() => setPage((p) => p - 1)} disabled={page === 0}>Previous</button>
+        <button type="button" className="btn small" onClick={() => setPage((p) => p - 1)} disabled={res.loading || page === 0}>Previous</button>
         <span className="num">Page {page + 1} of {int(pages)}</span>
-        <button type="button" className="btn small" onClick={() => setPage((p) => p + 1)} disabled={page + 1 >= pages}>Next</button>
+        <button type="button" className="btn small" onClick={() => setPage((p) => p + 1)} disabled={res.loading || page + 1 >= pages}>Next</button>
       </div>
     </div>
   );
@@ -163,13 +165,24 @@ const yesNo = (v: boolean | null) => (v == null ? '–' : v ? 'Yes' : 'No');
 export function CrashCard({ id, onClose }: { id: number; onClose: () => void }) {
   const res = useApi<Crash>(`/api/v1/crashes/${id}`);
   const c = res.data;
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const el = dialog.current!;
+    const opener = document.activeElement as HTMLElement | SVGElement | null;
+    el.showModal();
+    return () => {
+      el.close();
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
+    };
+  }, []);
   return (
-    <aside className="crash-card" aria-labelledby="crash-h">
+    <dialog ref={dialog} className="crash-card" aria-labelledby="crash-h" onCancel={(e) => { e.preventDefault(); onClose(); }}>
       <div className="crash-card-head">
         <h3 id="crash-h">Crash <span className="mono">{id}</span></h3>
-        <button type="button" className="icon-btn small" onClick={onClose} aria-label="Close crash record"><XIcon /></button>
+        <button type="button" className="icon-btn small" onClick={onClose} aria-label="Close crash record"><XIcon aria-hidden="true" /></button>
       </div>
-      {res.error && <p className="error-box">{res.error}</p>}
+      {res.error && <p className="error-box" role="alert">{res.error}</p>}
+      {res.loading && <p role="status">Loading crash record…</p>}
       {c && (
         <>
           <p className="crash-when">
@@ -199,6 +212,6 @@ export function CrashCard({ id, onClose }: { id: number; onClose: () => void }) 
           </a>
         </>
       )}
-    </aside>
+    </dialog>
   );
 }

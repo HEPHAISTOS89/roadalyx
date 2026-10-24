@@ -21,18 +21,18 @@ export function getJson<T>(url: string): Promise<T> {
 
 export interface Loaded<T> { data: T | null; error: string | null; loading: boolean }
 
-/** Data for `url`; keeps the previous answer on screen while the next one loads. */
+/** Responses belong to their URL: never show old figures under a new selection. */
 export function useApi<T>(url: string | null): Loaded<T> {
-  const [state, setState] = useState<Loaded<T>>({ data: null, error: null, loading: !!url });
+  const [state, setState] = useState<Loaded<T> & { url: string | null }>({ url, data: null, error: null, loading: !!url });
   useEffect(() => {
     if (!url) return;
     let live = true;
-    setState((s) => ({ ...s, loading: true, error: null }));
+    setState({ url, data: null, loading: true, error: null });
     getJson<T>(url).then(
-      (data) => live && setState({ data, error: null, loading: false }),
-      (e: Error) => live && setState((s) => ({ ...s, error: e.message, loading: false })),
+      (data) => live && setState({ url, data, error: null, loading: false }),
+      (e: Error) => live && setState({ url, data: null, error: e.message, loading: false }),
     );
     return () => { live = false; };
   }, [url]);
-  return state;
+  return url && state.url === url ? state : { data: null, error: null, loading: !!url };
 }

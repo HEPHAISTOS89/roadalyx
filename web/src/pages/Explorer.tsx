@@ -70,10 +70,11 @@ export default function Explorer() {
           <h1 className="sr-only">Crash explorer</h1>
           <FilterBar meta={meta.data} filters={filters} set={set} />
           <Scope meta={meta.data} total={s?.total ?? null} located={pts.data?.located ?? null} />
+          <p className="selection-status" role="status">{sev.loading || pts.loading ? 'Updating selection…' : ''}</p>
           {(sev.error || pts.error) && <p className="error-box">{sev.error || pts.error}</p>}
         </div>
 
-        <dl className="kpis" aria-label="Key figures">
+        <dl className="kpis" aria-label="Key figures" aria-busy={sev.loading}>
           <div><dt>Injury crashes</dt><dd><b className="num">{int(s?.total)}</b></dd></div>
           <div><dt><i className="sw k" />Fatal (K)</dt><dd><b className="num">{int(k?.crashes)}</b><small>{int(s?.deaths)} people killed</small></dd></div>
           <div><dt><i className="sw a" />Suspected serious (A)</dt><dd><b className="num">{int(a?.crashes)}</b><small>{int(s?.serious_injuries)} people seriously injured</small></dd></div>
@@ -83,9 +84,9 @@ export default function Explorer() {
         <div className="grid-main">
           <section className="panel map-panel" aria-labelledby="map-h">
             <div className="panel-head"><h2 id="map-h">Map</h2></div>
-            <div className="map-wrap">
+            <div className="map-wrap" aria-busy={pts.loading}>
+              {pts.loading && <p className="map-loading" role="status">Updating map…</p>}
               <CrashMap points={pts.data} selected={selected} onSelect={select} />
-              {selected != null && <CrashCard id={selected} onClose={() => select(null)} />}
             </div>
           </section>
           <div className="side">
@@ -93,11 +94,12 @@ export default function Explorer() {
               <div className="panel-head"><h2 id="sev-h">Severity</h2></div>
               {s ? <SeverityBars data={s} active={filters.severity} onPick={(code) => set({ severity: filters.severity.includes(code) ? filters.severity.filter((x) => x !== code) : [...filters.severity, code] })} /> : <div className="ph" />}
             </section>
-            <section className="panel" aria-labelledby="fac-h">
+            <section className="panel" aria-labelledby="fac-h" aria-busy={factors.loading}>
               <div className="panel-head">
                 <h2 id="fac-h">Contributing factors</h2>
                 {factors.data && <span className="panel-meta num">{int(factors.data.crashes_without_coded_factor)} with no coded factor</span>}
               </div>
+              {factors.error && <p className="error-box" role="alert">{factors.error}</p>}
               {factors.data ? <FactorBars rows={factors.data.factors} total={factors.data.total} active={filters.factor}
                 onPick={(f) => set({ factor: filters.factor === f ? null : f })} /> : <div className="ph tall" />}
             </section>
@@ -105,7 +107,7 @@ export default function Explorer() {
         </div>
 
         <div className="grid-when" id="when">
-          <section className="panel" aria-labelledby="trend-h">
+          <section className="panel" aria-labelledby="trend-h" aria-busy={trend.loading}>
             <div className="panel-head">
               <h2 id="trend-h">Over time</h2>
               <div className="tabs" role="tablist" aria-label="Time axis">
@@ -114,9 +116,10 @@ export default function Explorer() {
                 ))}
               </div>
             </div>
+            {trend.error && <p className="error-box" role="alert">{trend.error}</p>}
             {trend.data ? <TrendChart buckets={trend.data.buckets} by={trend.data.by} onPickYear={(y) => set({ yearFrom: y, yearTo: y })} /> : <div className="ph" />}
           </section>
-          <section className="panel" aria-labelledby="heat-h">
+          <section className="panel" aria-labelledby="heat-h" aria-busy={heat.loading}>
             <div className="panel-head">
               <h2 id="heat-h">Day and hour</h2>
               <div className="tabs" role="tablist" aria-label="Heat map measure">
@@ -124,11 +127,13 @@ export default function Explorer() {
                 <button type="button" role="tab" aria-selected={metric === 'ka_crashes'} onClick={() => setMetric('ka_crashes')}>K + A</button>
               </div>
             </div>
+            {heat.error && <p className="error-box" role="alert">{heat.error}</p>}
             {heat.data ? <Heatmap data={heat.data} metric={metric} /> : <div className="ph" />}
           </section>
         </div>
 
         <Breakdown query={query} onFilter={(key, value) => set({ [key]: filters[key].includes(value) ? filters[key] : [...filters[key], value] })} />
+        {selected != null && <CrashCard id={selected} onClose={() => select(null)} />}
         <Records query={query} total={s?.total ?? null} onSelect={select} selected={selected} />
       </div>
     </TooltipLayer>

@@ -95,9 +95,9 @@
 @media (max-width: 640px) { .map-wrap { min-height: 420px; } }
 
 .crash-card {
-  position: absolute; z-index: 3; top: 10px; left: 10px; bottom: 44px; width: min(340px, calc(100% - 20px)); overflow: auto;
+  position: fixed; inset: 0; margin: auto; width: min(480px, calc(100% - 32px)); max-height: calc(100dvh - 48px); overflow: auto; color: var(--ink);
   background: rgba(18, 20, 18, 0.97); border: 1px solid var(--rule-2); border-radius: var(--r-l); padding: var(--s4);
-  display: grid; gap: var(--s3); align-content: start; box-shadow: 0 18px 40px rgba(0,0,0,0.45); animation: pop 160ms var(--ease);
+  gap: var(--s3); align-content: start; box-shadow: 0 18px 40px rgba(0,0,0,0.45); animation: pop 160ms var(--ease);
 }
 .crash-card-head { display: flex; justify-content: space-between; align-items: center; }
 .icon-btn.small { width: 32px; height: 32px; font-size: 15px; }
@@ -185,3 +185,30 @@ table.data tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparen
 
 .empty-note { font-size: var(--t-label); color: var(--ink-3); padding: var(--s3) 6px; }
 .scope-empty { color: var(--warn); }
+
+.crash-card[open] { display: grid; }
+.crash-card::backdrop { background: rgba(0, 0, 0, 0.65); }
+.crash-card .kv { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+.crash-card .kv dd { overflow-wrap: anywhere; }
+.crash-card-head { position: sticky; top: calc(-1 * var(--s4)); padding-block: 8px; background: #121412; z-index: 1; }
+.selection-status { min-height: 1.3em; font-size: var(--t-micro); color: var(--ink-2); }
+.advanced-filters { position: relative; }
+.advanced-filters summary { cursor: pointer; padding: 7px 10px; min-height: var(--ctl); border: 1px solid var(--rule-2); border-radius: var(--r-m); font-size: var(--t-label); }
+.advanced-filters[open] { flex-basis: 100%; }
+.advanced-filters[open] summary { width: fit-content; margin-bottom: var(--s2); }
+.advanced-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.chart-readout { display: flex; flex-wrap: wrap; gap: 4px 12px; min-height: 2.8em; margin-top: 10px; font-size: var(--t-micro); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.chart-readout b { color: var(--ink); }
+.chart-data { font-size: var(--t-label); color: var(--ink-2); }
+.chart-data summary { cursor: pointer; width: fit-content; padding-block: 8px; }
+.chart-data .table-wrap { margin-top: 6px; }
+.chart [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.map-loading { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; background: var(--ground-2); color: var(--ink-2); font-size: var(--t-label); }
+@media (max-width: 700px) {
+  .filters .reset { margin-left: auto; }
+  .filters .seg button, .years select, .advanced-filters summary, .picker-btn { min-height: 44px; }
+  .chart .tick { font-size: 12px; }
+  .tabs { max-width: 100%; flex-wrap: wrap; }
+  .tabs button { min-height: 40px; }
+  .icon-btn.small { min-width: 44px; min-height: 44px; }
+}

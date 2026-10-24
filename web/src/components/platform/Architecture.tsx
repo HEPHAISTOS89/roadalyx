@@ -82,6 +82,8 @@ export default function Architecture({ meta, health, rtt, ping }: {
   const canvas = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
   const dot = useRef<SVGCircleElement>(null);
+  const traceFrame = useRef(0);
+  useLayoutEffect(() => () => cancelAnimationFrame(traceFrame.current), []);
   const [boxes, setBoxes] = useState<Record<string, Box>>({});
   const [size, setSize] = useState({ w: 0, h: 0 });
   const [sel, setSel] = useState<Id>('lambda');
@@ -105,7 +107,7 @@ export default function Architecture({ meta, health, rtt, ping }: {
     return () => ro.disconnect();
   }, []);
 
-  /** A real GET /api/health, then a dot retraces its path: client, URL, Lambda (and S3 on a cold start). */
+  /** A real health request followed by an illustrative path, not distributed telemetry. */
   const trace = useCallback(async () => {
     setTracing(true);
     const h = await ping();
@@ -124,9 +126,9 @@ export default function Architecture({ meta, health, rtt, ping }: {
       const { p, reverse } = legs[i];
       const pt = p.getPointAtLength(p.getTotalLength() * (reverse ? 1 - e : e));
       d.setAttribute('cx', String(pt.x)); d.setAttribute('cy', String(pt.y)); d.style.opacity = '1';
-      requestAnimationFrame(step);
+      traceFrame.current = requestAnimationFrame(step);
     };
-    requestAnimationFrame(step);
+    traceFrame.current = requestAnimationFrame(step);
   }, [ping]);
 
   const aws = health?.runtime.platform === 'aws-lambda';
@@ -151,9 +153,10 @@ export default function Architecture({ meta, health, rtt, ping }: {
           {LEGEND.map(([f, l]) => <li key={f}><i className={`ar-key ${f}`} />{l}</li>)}
         </ul>
         <button type="button" className="btn small" onClick={trace} disabled={tracing}>
-          <PaperPlaneTiltIcon aria-hidden="true" />{tracing ? 'Tracing…' : 'Trace a request'}
+          <PaperPlaneTiltIcon aria-hidden="true" />{tracing ? 'Checking…' : 'Check API health'}
         </button>
       </div>
+      <p className="panel-meta">Live health check · illustrated request path, not a distributed trace.</p>
       <div className="ar-canvas" ref={canvas}>
         <svg ref={svg} className="ar-edges" width={size.w} height={size.h} aria-hidden="true">
           <defs>

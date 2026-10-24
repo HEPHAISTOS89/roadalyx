@@ -15,6 +15,7 @@ interface Props { meta: Meta; filters: Filters; set: (f: Partial<Filters>) => vo
 
 export default function FilterBar({ meta, filters, set }: Props) {
   const years = meta.filters.year;
+  const advancedCount = filters.roadClass.length + Number(!!filters.factor) + filters.vru.length;
   const toggle = <T extends string>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
   return (
@@ -56,6 +57,9 @@ export default function FilterBar({ meta, filters, set }: Props) {
         </label>
       </div>
 
+      <details className="advanced-filters">
+        <summary>More filters{advancedCount > 0 ? ` (${advancedCount} active)` : ''}</summary>
+        <div className="advanced-controls">
       <Picker label="Road class" choices={meta.filters.road_class} selected={filters.roadClass} format={title}
         onChange={(v) => set({ roadClass: v })} />
       <Picker label="Factor" choices={meta.filters.factor} selected={filters.factor ? [filters.factor] : []} format={title}
@@ -68,6 +72,9 @@ export default function FilterBar({ meta, filters, set }: Props) {
             onClick={() => set({ vru: toggle(filters.vru, u.value) })}>{u.label}</button>
         ))}
       </fieldset>
+
+        </div>
+      </details>
 
       <button type="button" className="btn small reset" onClick={() => set(NO_FILTERS)} disabled={isEmpty(filters)}>
         <XIcon aria-hidden="true" />Reset

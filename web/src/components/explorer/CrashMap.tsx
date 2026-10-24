@@ -19,8 +19,12 @@ function baseStyle() {
   style ??= fetch('https://tiles.openfreemap.org/styles/dark')
     .then((r) => { if (!r.ok) throw new Error(`basemap ${r.status}`); return r.json() as Promise<StyleSpecification>; })
     .then((s) => {
+      s.layers = s.layers.filter((l) => !(l.type === 'symbol' && l.layout?.['icon-image'] && !l.layout?.['text-field']));
       for (const l of s.layers) {
+        if (l.type === 'symbol' && l.layout) delete l.layout['icon-image'];
         const paint = (l.paint ?? {}) as Record<string, unknown>;
+        // Decorative sprite textures are unnecessary on this data-focused basemap.
+        for (const key of ['fill-pattern', 'line-pattern', 'background-pattern']) delete paint[key];
         if (l.type === 'background') paint['background-color'] = '#0e0f0e';
         if (l.type === 'symbol') paint['text-color'] = '#8f968d';
         if (l.type === 'line' && l.id.startsWith('highway')) {
@@ -60,8 +64,6 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
         attributionControl: { compact: true }, cooperativeGestures: false, maxPitch: 0, dragRotate: false,
       });
       m.addControl(new NavigationControl({ showCompass: false }), 'top-right');
-      // The basemap style names a few POI icons its sprite lacks; an empty image keeps the console clean.
-      m.on('styleimagemissing', (e) => { if (!m!.hasImage(e.id)) m!.addImage(e.id, { width: 1, height: 1, data: new Uint8Array(4) }); });
       m.on('load', () => {
         m!.addSource('counties', { type: 'geojson', data: counties as FeatureCollection });
         m!.addLayer({ id: 'county-line', type: 'line', source: 'counties', paint: { 'line-color': '#4a524a', 'line-width': 1 } });
@@ -95,7 +97,11 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!ready || !points || !map.current) return;
+    if (!ready || !map.current) return;
+    if (!points) {
+      (map.current.getSource('crashes') as GeoJSONSource).setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
     const features = points.id.map((id, i) => ({
       type: 'Feature' as const, properties: { id, s: points.severity[i] },
       geometry: { type: 'Point' as const, coordinates: [points.lon[i], points.lat[i]] },

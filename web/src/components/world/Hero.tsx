@@ -47,8 +47,15 @@ export default function Hero() {
   const host = useRef<HTMLDivElement>(null);
   const labels = useRef<HTMLDivElement>(null);
   const section = useRef<HTMLElement>(null);
+  const countyPanel = useRef<HTMLElement>(null);
   const world = useRef<World | null>(null);
-  const [still] = useState(reduced);
+  const [still, setStill] = useState(reduced);
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => setStill(media.matches);
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
   const [gl] = useState(webgl);
   const [failed, setFailed] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -90,7 +97,8 @@ export default function Hero() {
       return;
     }
     world.current = w;
-    if (!still) { w.play(); setPlaying(true); }
+    if (!still) w.play();
+    setPlaying(!still);
     let inView = true;
     const sync = () => w.setActive(inView && !document.hidden);
     const io = new IntersectionObserver(([e]) => { inView = e.isIntersecting; sync(); });
@@ -104,10 +112,14 @@ export default function Hero() {
     };
   }, [pts.data, gl, still]);
 
-  // A selected county moves the camera to it; clearing the selection returns to the chosen view.
+  // Keep county figures discoverable when the controls sit below the map on mobile.
   useEffect(() => {
     world.current?.focus(picked);
-    if (picked) setView(null);
+    if (picked) {
+      setView(null);
+      countyPanel.current?.scrollIntoView({ block: 'nearest' });
+      countyPanel.current?.focus({ preventScroll: true });
+    }
   }, [picked]);
   useEffect(() => {
     if (!picked) return;
@@ -168,13 +180,14 @@ export default function Hero() {
           </p>
         )}
         {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">{coarse ? 'Drag to rotate · tap a county' : 'Drag to rotate · scroll to zoom · click a county'}</p>}
+        {!broken && <p className="hero-map-note">Fatal-crash rings are illustrative, not risk zones.</p>}
       </div>
 
       <div className="hero-copy">
         <h1 id="hero-h" className="sr-only">Injury crashes in the TxDOT Lubbock District, 2020 to 2026</h1>
+        <p className="hero-context">Lubbock District · TxDOT CRIS · 2020–2026</p>
         <div className="actions">
-          <Link className="btn primary" to="/explorer">Open the Explorer</Link>
-          <Link className="btn" to="/platform">How it is built</Link>
+          <Link className="btn primary" to="/explorer">Explore crashes<ArrowRightIcon aria-hidden="true" /></Link>
         </div>
       </div>
 
@@ -190,18 +203,21 @@ export default function Hero() {
           </button>
         )}
         {picked && (
-          <section className="hero-county" aria-labelledby="county-h">
+          <section ref={countyPanel} tabIndex={-1} className="hero-county" aria-labelledby="county-h">
             <div className="hero-county-head">
               <h2 id="county-h">{county(picked)} County</h2>
               <button type="button" className="icon-btn small" onClick={() => setPicked(null)} aria-label="Close county figures"><XIcon /></button>
             </div>
             {sel ? (
-              <dl>
+              <>
+                <p className="panel-meta">Full period · includes unmapped crashes</p>
+                <dl>
                 <div><dt>Crashes</dt><dd className="num">{int(sel.crashes)}</dd></div>
                 <div><dt>K + A share</dt><dd className="num">{pct(sel.ka_share)}</dd></div>
                 <div><dt><i className="sw k" />Fatal</dt><dd className="num">{int(sel.K)}</dd></div>
                 <div><dt>Deaths</dt><dd className="num">{int(sel.deaths)}</dd></div>
-              </dl>
+                </dl>
+              </>
             ) : <p className="muted">Loading…</p>}
             <Link className="finding-cta" to={`/explorer?county=${slug(picked)}`}>Open in the Explorer<ArrowRightIcon aria-hidden="true" /></Link>
           </section>
@@ -227,10 +243,10 @@ export default function Hero() {
         <div className="hud-when">
           <p className="hud-date num">{date ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '\u00a0'}</p>
           <p className="hud-sub" title={pts.data ? `${int(pts.data.total - pts.data.located)} crashes have no coordinates: counted in all figures, not drawn.` : undefined}>
-            <span className="num">{days ? int(upTo(days.all, shownDay)) : '–'}</span> located · TxDOT CRIS
+            <span className="num">{days ? int(upTo(days.all, shownDay)) : '–'}</span> mapped through this date
           </p>
         </div>
-        <dl className="hud-legend" aria-label="Crashes on the map by severity">
+        <dl className="hud-legend" aria-label="Cumulative mapped crashes through the displayed date by severity">
           {LEGEND.map(([code, label]) => (
             <div key={code} className={`sev-${code.toLowerCase()}`}>
               <dt><i aria-hidden="true" /><b>{code}</b> {label}</dt>

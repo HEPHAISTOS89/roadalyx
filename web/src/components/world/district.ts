@@ -79,14 +79,14 @@ const POINT_VS = /* glsl */ `
     vSpark = shown * (1.0 - smoothstep(0.0, 40.0, age));
     int s = int(sev + 0.5);
     vColor = uColors[s];
-    float base = s == 0 ? 7.5 : s == 1 ? 5.2 : s == 2 ? 3.0 : 2.2;
+    float base = s == 0 ? 5.0 : s == 1 ? 3.6 : s == 2 ? 2.2 : 1.6;
     // resting lights breathe slightly out of step with each other, like a city seen from the air
     float breathe = 0.82 + 0.18 * sin(uTime * (0.6 + phase * 0.9) + phase * 6.2831);
-    vAlpha = shown * (s == 3 ? 0.26 : s == 2 ? 0.42 : 1.0) * mix(breathe, 1.0, vSpark);
+    vAlpha = shown * (s == 3 ? 0.18 : s == 2 ? 0.28 : 0.8) * mix(breathe, 1.0, vSpark);
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mv;
     float dist = max(-mv.z, 1.0);
-    gl_PointSize = shown * uPx * base * (1.0 + 1.8 * vSpark) * clamp(220.0 / dist, 0.55, 2.2);
+    gl_PointSize = shown * uPx * base * (1.0 + 0.65 * vSpark) * clamp(220.0 / dist, 0.55, 2.2);
   }
 `;
 const POINT_FS = /* glsl */ `
@@ -99,7 +99,7 @@ const POINT_FS = /* glsl */ `
     if (r > 1.0) discard;
     float core = smoothstep(0.3, 0.0, r);
     float halo = (1.0 - r) * 0.22;
-    vec3 col = mix(vColor, vec3(1.0), 0.6 * vSpark + 0.2 * core);
+    vec3 col = vColor;
     gl_FragColor = vec4(col, vAlpha * (core + halo));
   }
 `;
@@ -312,7 +312,7 @@ export function createWorld(o: WorldOptions): World {
   };
   const lights = new THREE.Points(geo, new THREE.ShaderMaterial({
     vertexShader: POINT_VS, fragmentShader: POINT_FS, uniforms,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    transparent: true, depthWrite: false, blending: THREE.NormalBlending,
   }));
   lights.frustumCulled = false;
   lights.renderOrder = 4;
@@ -376,13 +376,13 @@ export function createWorld(o: WorldOptions): World {
   // The composer's own target is multisampled: without it the thin county lines break into dashes.
   const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType }));
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.6, 0.35, 0.42);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.22, 0.2, 0.8);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
   // Camera: spherical coordinates around a target, eased towards the wanted values each frame.
   // Narrow screens look down more steeply so the taller frame shows ground, not the horizon.
-  const views = { ...VIEWS, district: { ...VIEWS.district, polar: host.clientWidth < 700 ? 0.98 : VIEWS.district.polar } };
+  const views = { ...VIEWS, district: { ...VIEWS.district, radius: host.clientWidth < 700 ? 500 : VIEWS.district.radius, polar: host.clientWidth < 700 ? 0.98 : VIEWS.district.polar } };
   const cam = { ...views.district, target: views.district.target.clone() };
   const want = { ...views.district, target: views.district.target.clone() };
   const place = () => {
@@ -459,7 +459,7 @@ export function createWorld(o: WorldOptions): World {
   };
   const wheel = (e: WheelEvent) => {
     e.preventDefault();
-    want.radius = THREE.MathUtils.clamp(want.radius * Math.exp(e.deltaY * 0.0012), 25, 420);
+    want.radius = THREE.MathUtils.clamp(want.radius * Math.exp(e.deltaY * 0.0012), 25, 600);
     touch();
   };
   canvas.addEventListener('pointerdown', down);
@@ -476,7 +476,10 @@ export function createWorld(o: WorldOptions): World {
     composer.setSize(w, h);
     for (const m of lineMats) m.resolution.set(w, h);
     camera.aspect = w / Math.max(h, 1);
-    // narrow screens see the whole district by stepping back
+    // Reframe the default district view on resize, without undoing a user zoom.
+    const oldRadius = views.district.radius;
+    views.district.radius = w < 700 ? 500 : VIEWS.district.radius;
+    if (!selected && want.radius === oldRadius) cam.radius = want.radius = views.district.radius;
     camera.fov = w < 700 ? 46 : 34;
     // Lift the picture above the timeline bar without moving the orbit's centre.
     camera.setViewOffset(w, h, 0, h * 0.09, w, h);
