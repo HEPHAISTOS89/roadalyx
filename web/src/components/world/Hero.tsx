@@ -180,7 +180,6 @@ export default function Hero() {
           </p>
         )}
         {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">{coarse ? 'Drag to rotate · tap a county' : 'Drag to rotate · scroll to zoom · click a county'}</p>}
-        {!broken && <p className="hero-map-note">Fatal-crash rings are illustrative, not risk zones.</p>}
       </div>
 
       <div className="hero-copy">
