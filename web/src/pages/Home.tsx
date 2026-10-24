@@ -75,10 +75,10 @@ function Findings() {
       <Finding figure={pct(severest.ka_share, 0)} label={`K + A share of crashes citing ${name(severest.factor)}`}
         to={`/explorer?factor=${encodeURIComponent(severest.factor.toLowerCase())}`} cta={`Crashes citing ${name(severest.factor)}`}
         chart={<Bars rows={[{ label: 'Most cited', v: top.ka_share }, { label: 'Most severe', v: severest.ka_share, hot: true }]} />}>
-        Highest among the ten most cited factors. {title(top.factor)}, cited most ({pct(top.share, 0)} of crashes): {pct(top.ka_share, 0)}.
+        Highest among the ten most cited factors. {title(top.factor)}, cited most ({pct(top.share, 0)} of crashes), has {pct(top.ka_share, 0)}.
       </Finding>
       {worst && (
-        <Finding figure={pct(ka(worst))} label={`K + A share in ${county(String(worst.value))} County, the district's highest`}
+        <Finding figure={pct(ka(worst), 0)} label={`K + A share in ${county(String(worst.value))} County, the district's highest`}
           to={`/explorer?county=${String(worst.value).toLowerCase()}`} cta={`${county(String(worst.value))} County`}
           chart={<Bars rows={[...ranked.slice(0, 3).map((g, i) => ({ label: county(String(g.value)), v: ka(g), hot: i === 0 })),
             { label: county(String(lbk.value)), v: ka(lbk) }]} />}>
