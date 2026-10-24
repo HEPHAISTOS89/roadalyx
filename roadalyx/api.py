@@ -15,7 +15,9 @@ import gzip
 import io
 import json
 import os
+import sys
 import time
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
@@ -59,10 +61,17 @@ app = FastAPI(
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
+STARTED = time.time()
+LOADED: dict = {}
+
+
 @lru_cache(maxsize=1)
 def data() -> Dataset:
     """Loaded once per process: on Lambda, once per cold start."""
-    return load(DATA_SOURCE)
+    started = time.perf_counter()
+    dataset = load(DATA_SOURCE)
+    LOADED["ms"] = round((time.perf_counter() - started) * 1000, 1)
+    return dataset
 
 
 @app.middleware("http")
@@ -130,10 +139,25 @@ def _envelope(f: Filters, crashes: list[dict], payload: dict) -> dict:
 
 # Endpoints -----------------------------------------------------------------
 
-@app.get("/api/health", tags=["service"])
+@app.get("/api/health", tags=["service"], summary="Liveness, data freshness and where this instance runs")
 def health():
     d = data()
-    return {"status": "ok", "crashes": len(d.crashes), "processed_at": d.meta.get("processed_at")}
+    env = os.environ
+    return {
+        "status": "ok",
+        "crashes": len(d.crashes),
+        "processed_at": d.meta.get("processed_at"),
+        "data_source": "s3" if DATA_SOURCE.startswith("s3://") else "file",
+        "data_load_ms": LOADED.get("ms"),
+        "instance_age_s": round(time.time() - STARTED),
+        "runtime": {
+            "platform": "aws-lambda" if "AWS_LAMBDA_FUNCTION_NAME" in env else "local",
+            "region": env.get("AWS_REGION"),
+            "function": env.get("AWS_LAMBDA_FUNCTION_NAME"),
+            "memory_mb": int(env["AWS_LAMBDA_FUNCTION_MEMORY_SIZE"]) if "AWS_LAMBDA_FUNCTION_MEMORY_SIZE" in env else None,
+            "python": env.get("AWS_EXECUTION_ENV") or f"python{sys.version_info.major}.{sys.version_info.minor}",
+        },
+    }
 
 
 @app.get("/api/v1/meta", tags=["service"], summary="Dataset provenance, coverage and valid filter values")
@@ -185,7 +209,7 @@ def heatmap(f: FilterDep):
 @app.get("/api/v1/breakdown", response_model=schemas.BreakdownResponse, tags=["metrics"],
          summary="Crashes and severity mix per county, road class, weather...")
 def breakdown(f: FilterDep,
-              by: Literal["county", "road_class", "weather", "collision", "first_event",
+              by: Literal["county", "road_class", "rural", "weather", "collision", "first_event",
                           "intersection", "speed_limit"] = "county",
               limit: Annotated[int | None, Query(ge=1, le=500)] = None):
     crashes = f.apply(data().crashes)
@@ -245,12 +269,15 @@ def crash(crash_id: int):
 def points(f: FilterDep):
     rows = f.apply(data().crashes)
     located = [c for c in rows if c["lat"] is not None and c["lon"] is not None]
+    start = data().coverage[0]
     return _envelope(f, rows, {
         "located": len(located),
+        "start": start.isoformat(),
         "id": [c["id"] for c in located],
         "lon": [c["lon"] for c in located],
         "lat": [c["lat"] for c in located],
         "severity": "".join(c["severity"] for c in located),
+        "day": [(date.fromisoformat(c["date"]) - start).days for c in located],
     })
 
 

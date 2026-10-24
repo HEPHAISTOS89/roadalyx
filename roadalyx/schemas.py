@@ -76,7 +76,7 @@ class HeatmapResponse(Filtered):
 
 
 class BreakdownRow(BaseModel):
-    value: str | int | None
+    value: str | int | bool | None
     crashes: int
     K: int
     A: int
@@ -131,7 +131,9 @@ class CrashPage(Filtered):
 
 class PointsResponse(Filtered):
     located: int = Field(description="Crashes with coordinates (the arrays below).")
+    start: str = Field(description="First date of the dataset; `day` counts days from it.")
     id: list[int]
     lon: list[float]
     lat: list[float]
     severity: str = Field(description="One KABC letter per point, same order as the arrays.")
+    day: list[int] = Field(description="Crash date as days since `start`.")

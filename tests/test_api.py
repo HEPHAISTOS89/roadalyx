@@ -19,7 +19,9 @@ def get(path, **params):
 
 
 def test_health_and_meta():
-    assert get("/api/health")["crashes"] == 4
+    health = get("/api/health")
+    assert health["crashes"] == 4 and health["runtime"]["platform"] == "local"
+    assert health["data_load_ms"] is not None
     meta = get("/api/v1/meta")
     assert meta["coverage"] == {"start": "2024-03-05", "end": "2025-12-31"}
     assert [c["value"] for c in meta["filters"]["county"]] == ["lubbock", "hale"]
@@ -69,6 +71,8 @@ def test_factors_trends_heatmap_breakdown():
     assert sum(map(sum, heat["crashes"])) == 3 and len(heat["crashes"]) == 7
     groups = get("/api/v1/breakdown", by="county")["groups"]
     assert [(g["value"], g["crashes"]) for g in groups] == [("LUBBOCK", 3), ("HALE", 1)]
+    rural = get("/api/v1/breakdown", by="rural")["groups"]
+    assert [(g["value"], g["crashes"]) for g in rural] == [(False, 3), (True, 1)]
     assert client.get("/api/v1/trends", params={"by": "decade"}).status_code == 422
 
 
@@ -81,6 +85,7 @@ def test_crash_records_paging_detail_and_points():
     assert client.get("/api/v1/crashes", params={"limit": 5000}).status_code == 422
     pts = get("/api/v1/points")
     assert pts["located"] == 2 and pts["severity"] == "CK" and len(pts["lat"]) == 2
+    assert pts["start"] == "2024-03-05" and pts["day"] == [121, 666]  # 2024-07-04, 2025-12-31
 
 
 def test_csv_export():

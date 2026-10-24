@@ -1,0 +1,53 @@
+@font-face {
+  font-family: 'Switzer';
+  src: url('/fonts/switzer-variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* Night survey: asphalt ground, ink text, one sage action accent. Colour that carries meaning
+   is reserved for KABCO severity, an ordinal ramp (lightness falls from C to K), checked with the
+   dataviz palette validator against --ground. */
+:root {
+  --ground: #0e0f0e;
+  --ground-2: #121412;
+  --panel: #161816;
+  --raise: #1f221f;
+  --rule: #2a2e2a;
+  --rule-2: #383d38;
+  --ink: #eef0ec;
+  --ink-2: #c0c5bd;
+  --ink-3: #8f968d;
+  --accent: #a6bea1;
+  --accent-ink: #0e0f0e;
+  --warn: #e7b63b;
+  --danger: #ff6b6b;
+
+  --sev-k: #d31246;
+  --sev-a: #f27000;
+  --sev-b: #e7b63b;
+  --sev-c: #d0d8e1;
+
+  --f-ui: 'Switzer', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --t-display: clamp(2.4rem, 1.2rem + 4.4vw, 5.25rem);
+  --t-h1: clamp(1.75rem, 1.3rem + 1.4vw, 2.5rem);
+  --t-h2: 1.375rem;
+  --t-h3: 1.0625rem;
+  --t-lede: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+  --t-body: 1rem;
+  --t-ui: 0.875rem;
+  --t-label: 0.8125rem;
+  --t-micro: 0.75rem;
+  --t-fig: clamp(1.625rem, 1.3rem + 1vw, 2.125rem);
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 80px;
+  --r-s: 4px; --r-m: 8px; --r-l: 12px; --r-pill: 999px;
+  --ctl: 36px;
+  --gutter: clamp(16px, 4vw, 48px);
+  --max: 1440px;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --bar-h: 56px;
+  color-scheme: dark;
+}

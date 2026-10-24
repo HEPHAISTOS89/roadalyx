@@ -27,3 +27,7 @@ __pycache__/
 # Secrets never belong in the repo
 .env
 .env.*
+
+# Local tooling
+.claude/
+.playwright-mcp/

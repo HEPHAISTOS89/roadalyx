@@ -20,7 +20,7 @@ SEVERITY_LABELS = {
 # Tokens that record the absence of a coded cause, not a cause: kept in the data, left out of rankings.
 NON_CAUSAL_FACTORS = {"NONE", "OTHER (EXPLAIN IN NARRATIVE)"}
 TREND_AXES = ("year", "month", "hour", "weekday")
-BREAKDOWN_FIELDS = ("county", "road_class", "weather", "collision", "first_event",
+BREAKDOWN_FIELDS = ("county", "road_class", "rural", "weather", "collision", "first_event",
                     "intersection", "speed_limit")
 
 
