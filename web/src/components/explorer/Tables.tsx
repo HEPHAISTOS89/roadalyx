@@ -194,7 +194,7 @@ export function CrashCard({ id, onClose }: { id: number; onClose: () => void }) 
             <dt>Seriously injured</dt><dd>{c.serious_injuries}</dd>
             <dt>Injured (not killed)</dt><dd>{c.injuries}</dd>
             <dt>Persons involved</dt><dd>{c.people}</dd>
-            <dt>Road users</dt><dd>{c.vru.length ? c.vru.map(title).join(', ') : 'Vehicle occupants only'}</dd>
+            <dt>Road users</dt><dd>{c.vru.length ? c.vru.map(title).join(', ') : 'No pedestrian, cyclist or motorcyclist recorded'}</dd>
             <dt>Factors</dt><dd>{c.factors.map(title).join('; ') || '–'}</dd>
             <dt>Collision</dt><dd>{title(c.collision)}</dd>
             <dt>First harmful event</dt><dd>{title(c.first_event)}</dd>
@@ -205,7 +205,7 @@ export function CrashCard({ id, onClose }: { id: number; onClose: () => void }) 
             <dt>Weather</dt><dd>{title(c.weather)}</dd>
             <dt>Area</dt><dd>{c.rural == null ? '–' : c.rural ? 'Rural' : 'Urban'}</dd>
             <dt>Work zone / school zone</dt><dd>{yesNo(c.construction_zone)} / {yesNo(c.school_zone)}</dd>
-            <dt>Location</dt><dd className="mono">{c.lat != null ? `${c.lat.toFixed(5)}, ${c.lon!.toFixed(5)}` : 'Not recorded'}</dd>
+            <dt>Location</dt><dd className="mono">{c.lat != null && c.lon != null ? `${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}` : 'Not recorded'}</dd>
           </dl>
           <a className="btn small" href={`/api/v1/crashes/${id}`} target="_blank" rel="noreferrer">
             <ArrowSquareOutIcon aria-hidden="true" />JSON

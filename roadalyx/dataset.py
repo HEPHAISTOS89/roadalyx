@@ -12,6 +12,7 @@ from functools import lru_cache
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 SCHEMA_VERSION = 1
 VRU_TYPES = ("pedestrian", "pedalcyclist", "motorcyclist")
@@ -62,9 +63,19 @@ def save(path: str | Path, crashes: list[dict], meta: dict) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     body = {"schema_version": SCHEMA_VERSION, "meta": meta, "crashes": crashes}
-    # mtime=0 makes the file byte-identical for identical data, so re-runs do not look like new data.
-    with gzip.GzipFile(path, "wb", mtime=0) as f:
-        f.write(json.dumps(body, separators=(",", ":")).encode())
+    payload = json.dumps(body, separators=(",", ":"), allow_nan=False).encode()
+    temporary = None
+    try:
+        # Same directory: replace is atomic, so a failed write cannot destroy the previous dataset.
+        with NamedTemporaryFile(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", delete=False) as temp:
+            temporary = Path(temp.name)
+            # Omit the temporary name and timestamp from the gzip header for deterministic output.
+            with gzip.GzipFile(filename="", mode="wb", fileobj=temp, mtime=0) as f:
+                f.write(payload)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
     return path
 
 

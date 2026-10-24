@@ -54,7 +54,11 @@ I build a separate crash table with one record per ID. I keep the source person 
 - I keep `NONE` and `OTHER (EXPLAIN IN NARRATIVE)` in the records but exclude them from the factor ranking. I report crashes without a specific coded factor separately.
 - I keep crashes with missing coordinates in the totals; they are absent only from the map.
 - I treat unknown speed limits as missing, normalize yes/no labels, and read crash times as HHMM.
+- I treat `UNKNOWN` and `NA` as missing street names. This affects 26 crashes, which stay in the totals.
 - I reject missing or invalid Crash IDs and dates, and empty exports, before writing the processed file. I also check the export's declared counts and conflicting crash fields.
+- I reject missing, non-numeric or negative death and injury counts instead of reporting them as zero.
+
+I write the processed file to a temporary file first, then replace the previous one only when the write succeeds.
 
 The supplied file contains K, A, B and C crashes from **1 January 2020 to 20 October 2026**. The results are:
 

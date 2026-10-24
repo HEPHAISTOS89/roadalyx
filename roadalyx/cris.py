@@ -99,6 +99,13 @@ def _int(value: str) -> int | None:
         return None
 
 
+def _count(value: str, column: str, crash_id: str) -> int:
+    count = _int(value)
+    if count is None or count < 0:
+        raise ValueError(f"Crash {crash_id}: missing or invalid {column} {value!r}; expected a non-negative integer")
+    return count
+
+
 def _coord(value: str, axis: str) -> float | None:
     try:
         number = float(value)
@@ -149,6 +156,7 @@ def build_crashes(persons: pd.DataFrame) -> list[dict]:
         if hhmm is not None and not (0 <= hhmm <= 2359 and hhmm % 100 < 60):
             hhmm = None
         speed = _int(r["Speed Limit"])
+        street = _text(r["Street Name"])
         severity = (_text(r["Crash Severity"]) or "")[:1]
         if severity not in SEVERITIES:
             raise ValueError(f"Crash {crash_id}: severity {r['Crash Severity']!r}; this pipeline covers K, A, B and C "
@@ -163,9 +171,9 @@ def build_crashes(persons: pd.DataFrame) -> list[dict]:
             "time": f"{hhmm // 100:02d}:{hhmm % 100:02d}" if hhmm is not None else None,
             "county": _text(r["County"]),
             "severity": severity,
-            "deaths": _int(r["Crash Death Count"]) or 0,
-            "serious_injuries": _int(r["Crash Suspected Serious Injury Count"]) or 0,
-            "injuries": _int(r["Crash Total Injury Count"]) or 0,
+            "deaths": _count(r["Crash Death Count"], "Crash Death Count", crash_id),
+            "serious_injuries": _count(r["Crash Suspected Serious Injury Count"], "Crash Suspected Serious Injury Count", crash_id),
+            "injuries": _count(r["Crash Total Injury Count"], "Crash Total Injury Count", crash_id),
             "people": int(people[crash_id]),
             "factors": _factors(r["Contributing Factors"]),
             "road_class": _text(r["Road Class"]),
@@ -178,7 +186,7 @@ def build_crashes(persons: pd.DataFrame) -> list[dict]:
             "weather": _label(r["Weather Condition"]),
             "collision": _text(r["Manner of Collision"]),
             "first_event": _text(r["First Harmful Event"]),
-            "street": _text(r["Street Name"]),
+            "street": None if street in {"NA", "UNKNOWN"} else street,
             "construction_zone": _flag(r["Construction Zone Flag"]),
             "school_zone": _flag(r["Active School Zone Flag"]),
             "reportable": _flag(r["TxDOT Reportable Flag"]),

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from roadalyx import cris, metrics
+from roadalyx import cris, dataset, metrics
 from roadalyx.__main__ import main
 from roadalyx.dataset import Dataset, load
 
@@ -170,3 +170,107 @@ def test_dataset_rejects_empty_input_and_duplicate_ids(crashes):
     records = list(crashes.values())
     with pytest.raises(ValueError, match="duplicate Crash ID"):
         Dataset([records[0], records[0]], {})
+
+
+@pytest.mark.parametrize("value,expected", [
+    ("NA", None), (" unknown ", None), ("", None), ("No Data", None),
+    ("NA ST", "NA ST"), ("19TH ST", "19TH ST"),
+])
+def test_unknown_streets_are_missing_not_named_roads(export, value, expected):
+    persons = export.persons.copy()
+    persons["Street Name"] = value
+    assert all(c["street"] == expected for c in cris.build_crashes(persons))
+
+
+def test_street_placeholders_do_not_change_other_categories(export):
+    persons = export.persons.copy()
+    persons["Street Name"] = "UNKNOWN"
+    persons["First Harmful Event"] = "UNKNOWN"
+    assert all(c["street"] is None and c["first_event"] == "UNKNOWN" for c in cris.build_crashes(persons))
+
+
+@pytest.mark.parametrize("column", [
+    "Crash Death Count", "Crash Suspected Serious Injury Count", "Crash Total Injury Count",
+])
+@pytest.mark.parametrize("value", ["", "No Data", "NaN", "abc", "-1", "1.5"])
+def test_unknown_or_invalid_victim_counts_are_not_zero(export, column, value):
+    persons = export.persons.copy()
+    persons[column] = value
+    with pytest.raises(ValueError, match=column):
+        cris.build_crashes(persons)
+
+
+@pytest.mark.parametrize("force", [False, True])
+def test_cli_preserves_output_on_unknown_victim_count(export, tmp_path, capsys, force):
+    persons = export.persons.copy()
+    persons["Crash Death Count"] = ""
+    source = FIXTURE.read_text(encoding="utf-8-sig")
+    preamble = source[:source.index('"Crash ID"')]
+    bad = tmp_path / "bad.csv"
+    bad.write_text(preamble + persons.to_csv(index=False, quoting=csv.QUOTE_ALL), encoding="utf-8")
+    out = tmp_path / "crashes.json.gz"
+    out.write_bytes(b"previous valid dataset")
+    args = [str(bad), "--out", str(out)] + (["--force"] if force else [])
+    assert main(args) == 1
+    assert out.read_bytes() == b"previous valid dataset"
+    assert "Crash Death Count" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("stage", ["serialization", "write", "replace"])
+def test_failed_save_preserves_destination_and_removes_temporary_file(crashes, tmp_path, monkeypatch, existing, stage):
+    out = tmp_path / "crashes.json.gz"
+    if existing:
+        out.write_bytes(b"previous valid dataset")
+
+    def fail(*args, **kwargs):
+        raise OSError("simulated failure")
+
+    if stage == "serialization":
+        monkeypatch.setattr(dataset.json, "dumps", fail)
+    elif stage == "write":
+        monkeypatch.setattr(dataset.gzip.GzipFile, "write", fail)
+    else:
+        monkeypatch.setattr(Path, "replace", fail)
+    with pytest.raises(OSError, match="simulated failure"):
+        dataset.save(out, list(crashes.values()), {})
+    if existing:
+        assert out.read_bytes() == b"previous valid dataset"
+    else:
+        assert not out.exists()
+    assert set(tmp_path.iterdir()) == ({out} if existing else set())
+
+
+def test_successful_save_replaces_file_and_is_deterministic(crashes, tmp_path):
+    records = list(crashes.values())
+    first, second = tmp_path / "first.json.gz", tmp_path / "second.json.gz"
+    first.write_bytes(b"previous dataset")
+    dataset.save(first, records, {})
+    dataset.save(second, records, {})
+    assert load(str(first)).crashes == records
+    assert first.read_bytes() == second.read_bytes()
+    assert set(tmp_path.iterdir()) == {first, second}
+
+
+def test_cli_reports_a_write_failure_without_losing_previous_output(tmp_path, monkeypatch, capsys):
+    out = tmp_path / "crashes.json.gz"
+    out.write_bytes(b"previous valid dataset")
+
+    def fail(*args, **kwargs):
+        raise OSError("simulated write failure")
+
+    monkeypatch.setattr(dataset.gzip.GzipFile, "write", fail)
+    assert main([str(FIXTURE), "--out", str(out)]) == 1
+    assert "ERROR: simulated write failure" in capsys.readouterr().err
+    assert out.read_bytes() == b"previous valid dataset"
+    assert set(tmp_path.iterdir()) == {out}
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_save_rejects_non_finite_json_without_replacing_output(crashes, tmp_path, value):
+    out = tmp_path / "crashes.json.gz"
+    out.write_bytes(b"previous valid dataset")
+    with pytest.raises(ValueError):
+        dataset.save(out, list(crashes.values()), {"invalid_number": value})
+    assert out.read_bytes() == b"previous valid dataset"
+    assert set(tmp_path.iterdir()) == {out}
