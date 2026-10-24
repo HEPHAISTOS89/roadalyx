@@ -1,0 +1,19 @@
+# Assessment material from the lab (raw CRIS export, brief) stays local
+original/
+*.xlsx
+~$*
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Secrets
+.env
+.env.*
