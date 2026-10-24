@@ -15,7 +15,6 @@ export function Mark({ size = 22 }: { size?: number }) {
 const TITLES: Record<string, string> = {
   '/': 'Roadalyx · Lubbock District injury crashes',
   '/explorer': 'Explorer · Roadalyx',
-  '/platform': 'Platform · Roadalyx',
 };
 
 export default function Shell({ children }: { children: ReactNode }) {
@@ -33,7 +32,6 @@ export default function Shell({ children }: { children: ReactNode }) {
         <nav aria-label="Main">
           <NavLink to="/" end>Overview</NavLink>
           <NavLink to="/explorer">Explorer</NavLink>
-          <NavLink to="/platform">Platform</NavLink>
           <a href="/api/docs">API</a>
         </nav>
       </header>

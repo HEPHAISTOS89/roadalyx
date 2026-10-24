@@ -139,7 +139,7 @@ Given more time, I would add a rate limit and a controlled way to refresh the da
 
 I added a React frontend in [web](web/) as optional work, separate from the required pipeline and API. The Explorer lets an analyst filter the same data, view charts and a map, inspect crash records and download the selection.
 
-Overview is an additional 3D view of located crashes. Its effects are visual, not measures of risk. Platform explains the architecture and runs a health check; its animated request path is an illustration, not distributed tracing.
+Overview is an additional 3D view of located crashes. Its effects are visual, not measures of risk.
 
 To run it locally, use Node 22.12+ and keep the API running on port 8000:
 

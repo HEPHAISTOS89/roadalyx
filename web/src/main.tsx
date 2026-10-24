@@ -9,9 +9,8 @@ import Shell from './components/Shell';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
 
-// The Explorer (MapLibre) and Platform pages load on demand so the landing page stays light.
+// Load the Explorer map on demand so the landing page stays light.
 const Explorer = lazy(() => import('./pages/Explorer'));
-const Platform = lazy(() => import('./pages/Platform'));
 
 function Pages() {
   const { pathname } = useLocation();
@@ -21,7 +20,6 @@ function Pages() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/explorer" element={<Explorer />} />
-          <Route path="/platform" element={<Platform />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
