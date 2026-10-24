@@ -1,9 +1,10 @@
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import '@fontsource-variable/jetbrains-mono';
 import './styles/tokens.css';
 import './styles/app.css';
+import Boundary from './components/Boundary';
 import Shell from './components/Shell';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
@@ -12,18 +13,27 @@ import NotFound from './pages/NotFound';
 const Explorer = lazy(() => import('./pages/Explorer'));
 const Platform = lazy(() => import('./pages/Platform'));
 
+function Pages() {
+  const { pathname } = useLocation();
+  return (
+    <Boundary resetKey={pathname}>
+      <Suspense fallback={<div className="page-loading" role="status">Loading…</div>}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/explorer" element={<Explorer />} />
+          <Route path="/platform" element={<Platform />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
+    </Boundary>
+  );
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <Shell>
-        <Suspense fallback={<div className="page-loading" role="status">Loading…</div>}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/explorer" element={<Explorer />} />
-            <Route path="/platform" element={<Platform />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+        <Pages />
       </Shell>
     </BrowserRouter>
   </StrictMode>,

@@ -20,6 +20,7 @@ export default function Picker({ label, choices, selected, onChange, multiple = 
   const [q, setQ] = useState('');
   const root = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLUListElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const id = useId();
   const close = useCallback(() => { setOpen(false); setQ(''); }, []);
   useDismiss(open, close, root);
@@ -30,7 +31,7 @@ export default function Picker({ label, choices, selected, onChange, multiple = 
   }, [choices, q]);
   const pick = (v: string) => {
     if (multiple) onChange(selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v]);
-    else { onChange(selected[0] === v ? [] : [v]); close(); }
+    else { onChange(selected[0] === v ? [] : [v]); close(); button.current?.focus(); }
   };
   const summary = selected.length === 0 ? 'All'
     : selected.length === 1 ? format(choices.find((c) => c.value === selected[0])?.label ?? selected[0])
@@ -38,6 +39,7 @@ export default function Picker({ label, choices, selected, onChange, multiple = 
 
   // Arrow keys move between options; the list is a group of checkboxes, so Space toggles natively.
   const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape' && open) { button.current?.focus(); return; } // focus returns to the trigger; useDismiss closes
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     e.preventDefault();
     const items = [...(list.current?.querySelectorAll<HTMLButtonElement>('button') ?? [])];
@@ -47,7 +49,7 @@ export default function Picker({ label, choices, selected, onChange, multiple = 
 
   return (
     <div className="picker" ref={root} onKeyDown={onKey}>
-      <button type="button" className={`picker-btn${selected.length ? ' on' : ''}`} aria-expanded={open} aria-controls={id} title={summary}
+      <button ref={button} type="button" className={`picker-btn${selected.length ? ' on' : ''}`} aria-expanded={open} aria-controls={id} title={summary}
         onClick={() => (open ? close() : setOpen(true))}>
         <span className="picker-label">{label}</span>
         <span className="picker-value">{summary}</span>

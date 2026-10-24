@@ -68,3 +68,4 @@
   .hero-views { position: relative; right: auto; bottom: auto; top: auto; margin: var(--s3) var(--gutter) 0; order: 3; align-self: flex-start; }
   .hero-hud { position: relative; left: auto; right: auto; bottom: auto; margin: var(--s3) var(--gutter) 0; order: 4; }
 }
+@media (max-width: 700px) { .hud-years i:nth-child(even) { display: none; } }

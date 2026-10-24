@@ -168,3 +168,12 @@ table.data tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparen
 .empty { color: var(--ink-3); text-align: center !important; padding: var(--s5) !important; }
 .records td:nth-child(6) { white-space: normal; min-width: 200px; }
 .pager { display: flex; align-items: center; justify-content: flex-end; gap: var(--s3); font-size: var(--t-label); color: var(--ink-2); }
+
+@media (max-width: 700px) {
+  /* On a phone the filter block would cover a quarter of the screen: let it scroll away. */
+  .explorer-top { position: static; }
+  .map-legend { gap: 8px; padding: 4px 8px; flex-wrap: wrap; max-width: calc(100% - 60px); }
+  .hbars li { grid-template-columns: 112px 1fr 84px; }
+  .reset { margin-left: 0; }
+  .panel { padding: var(--s4); }
+}
