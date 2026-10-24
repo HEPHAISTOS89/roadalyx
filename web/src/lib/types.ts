@@ -13,7 +13,7 @@ export interface Meta {
   dataset: {
     source: string; source_file: string; filters: string[]; person_rows: number; crashes: number;
     declared: { crashes: number | null; units: number | null; persons: number | null };
-    missing_coordinates: number; unknown_speed_limit: number; processed_at: string;
+    missing_coordinates: number; unknown_speed_limit: number; conflicting_crashes: number; processed_at: string;
   };
   coverage: { start: string; end: string };
   filters: { county: Choice[]; road_class: Choice[]; factor: Choice[]; year: number[]; severity: Sev[]; vru: string[] };
