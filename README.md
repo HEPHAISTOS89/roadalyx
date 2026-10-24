@@ -277,16 +277,18 @@ and passes the dataset's ETag to the stack so new Lambda instances load the new 
 One frontend, served by the same Lambda function, so the browser talks to a single origin.
 
 - **Overview:** the district at night in three.js. Each light is a crash at its CRIS coordinates; apart from
-  the county lines nothing else is drawn, so the road network you see is the crashes themselves. Fatal and serious crashes stand as
-  red and orange posts. A timeline replays 2020 to 2026, and hovering a county shows its counts. Below, four
-  findings are recomputed from the API on each visit (for example, rural crashes are about five times as
-  likely as urban ones to be fatal or serious).
+  the county lines nothing else is drawn, so the road network you see is the crashes themselves. Fatal and
+  serious crashes stand as red and orange posts. Drag turns the view; clicking a county moves the camera to it
+  and opens its figures with a link to the Explorer filtered on that county. The 2020–2026 timeline replays
+  once per session and on demand. Below, four findings are recomputed from the API on each visit (for
+  example, rural crashes are about five times as likely as urban ones to be fatal or serious).
 - **Explorer:** every filter of the API, kept in the URL so any view can be shared. Key figures, a MapLibre
   map where a click opens the crash record, severity, factors (count next to the share that is K or A),
   trends by year, month, hour or weekday, a day-by-hour grid, a sortable breakdown table, the paginated
   records and a CSV download of the current selection.
-- **Platform:** the architecture as an interactive diagram, a button that sends a real request and traces
-  it, an API console with copyable curl and pandas snippets, and the pipeline's validation figures.
+- **Platform:** live status measured from the browser (round trip, instance age, cold-start load), the
+  architecture with animated flows between its components, a button that sends a real request and traces
+  its path, the pipeline's validation figures, and an API console with copyable curl and pandas snippets.
 
 Severity colours are an ordinal ramp checked for colour-vision deficiency; every chart has a text
 equivalent (labels, tooltips, tables); the 3D view falls back to a message when WebGL is unavailable and

@@ -97,10 +97,9 @@ function Findings() {
 function Finding({ figure, label, children, to, cta, chart }: { figure: string; label: string; children: React.ReactNode; to: string; cta: string; chart: React.ReactNode }) {
   return (
     <article className="finding">
-      <p className="finding-fig num">{figure}</p>
-      <h3>{label}</h3>
-      <div className="finding-chart" aria-hidden="true">{chart}</div>
+      <h3><b className="num">{figure}</b> {label}</h3>
       <p className="finding-body">{children}</p>
+      <div className="finding-chart" aria-hidden="true">{chart}</div>
       <Link className="finding-cta" to={to}>{cta}<ArrowRightIcon aria-hidden="true" /></Link>
     </article>
   );
@@ -110,34 +109,10 @@ export default function Home() {
   const meta = useApi<Meta>('/api/v1/meta');
   return (
     <>
-      <Hero />
+      <Hero meta={meta.data} />
       <section className="section" aria-labelledby="find-h">
-        <div className="section-head">
-          <h2 id="find-h">What the district's crashes say</h2>
-        </div>
+        <h2 id="find-h" className="find-title">What the crashes say</h2>
         <Findings />
-      </section>
-      <section className="section" aria-labelledby="flow-h">
-        <div className="home-flow">
-          <div className="section-head">
-            <h2 id="flow-h">From a CRIS export to an API anyone can query</h2>
-            <p className="lede">
-              A tested Python pipeline turns the export's {meta.data ? int(meta.data.dataset.person_rows) : ''} person rows into one
-              record per crash and publishes it to S3. One Lambda function serves the API and this portal.
-            </p>
-          </div>
-          <ol className="flow-steps">
-            <li><b>CRIS export</b><span>one row per person</span></li>
-            <li><b>Pipeline</b><span>Python, pandas, tests</span></li>
-            <li><b>Amazon S3</b><span>crashes.json.gz</span></li>
-            <li><b>AWS Lambda</b><span>FastAPI, function URL</span></li>
-            <li><b>You</b><span>portal, curl, pandas</span></li>
-          </ol>
-          <div className="actions">
-            <Link className="btn" to="/platform">See the architecture</Link>
-            <a className="btn" href="/api/docs">Read the API reference</a>
-          </div>
-        </div>
       </section>
     </>
   );

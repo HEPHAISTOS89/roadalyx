@@ -19,6 +19,7 @@ export const project = (lon: number, lat: number) => new THREE.Vector3((lon - LO
 const GROUND = 0x0b0c0b;
 const FILL = 0x0d0e0d;
 const FILL_HOVER = 0x1a1f1a;
+const FILL_SELECTED = 0x23302a;
 const SEV_INDEX: Record<string, number> = { K: 0, A: 1, B: 2, C: 3 };
 // Same ramp as --sev-* in tokens.css (validated ordinal ramp: lightness falls from C to K).
 const SEV_COLOR = ['#d31246', '#f27000', '#e7b63b', '#d0d8e1'].map((c) => new THREE.Color(c));
@@ -31,6 +32,7 @@ export interface WorldOptions {
   still: boolean;
   onDay: (day: number) => void;
   onHover: (county: string | null, x: number, y: number) => void;
+  onSelect: (county: string | null) => void;
 }
 
 export interface World {
@@ -39,6 +41,7 @@ export interface World {
   pause(): void;
   isPlaying(): boolean;
   view(name: 'district' | 'lubbock'): void;
+  focus(county: string | null): void;
   setActive(active: boolean): void;
   dispose(): void;
 }
@@ -117,7 +120,7 @@ const SKY_FS = /* glsl */ `
     float h = vDir.y;
     // Llano night: the ground colour fades into a faint warm glow low on the horizon, then the night sky
     vec3 zenith = vec3(0.028, 0.032, 0.04);
-    vec3 glow = vec3(0.085, 0.062, 0.048);
+    vec3 glow = vec3(0.058, 0.05, 0.043);
     vec3 col = mix(glow, zenith, smoothstep(0.0, 0.32, h));
     col = mix(col, uGround, smoothstep(0.02, -0.04, h));
     gl_FragColor = vec4(col, 1.0);
@@ -155,7 +158,7 @@ export function createWorld(o: WorldOptions): World {
   const fillMat = () => new THREE.MeshBasicMaterial({ color: FILL, depthWrite: false });
   const edgeMat = new THREE.LineBasicMaterial({ color: 0x343b34 });
   const countyMeshes: THREE.Mesh[] = [];
-  const labelEls: { el: HTMLElement; at: THREE.Vector3 }[] = [];
+  const labelEls: { el: HTMLElement; at: THREE.Vector3; name: string }[] = [];
   for (const f of counties.features) {
     const polys = (f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.coordinates) as number[][][][];
     for (const poly of polys) {
@@ -174,7 +177,7 @@ export function createWorld(o: WorldOptions): World {
       const el = document.createElement('span');
       el.textContent = f.properties.name.charAt(0) + f.properties.name.slice(1).toLowerCase();
       labels.append(el);
-      labelEls.push({ el, at: box.getCenter(new THREE.Vector3()) });
+      labelEls.push({ el, at: box.getCenter(new THREE.Vector3()), name: f.properties.name });
     }
   }
 
@@ -196,7 +199,7 @@ export function createWorld(o: WorldOptions): World {
   geo.setAttribute('sev', new THREE.BufferAttribute(sev, 1));
   geo.setAttribute('day', new THREE.BufferAttribute(day, 1));
   const uniforms = {
-    uDay: { value: still ? lastDay : 0 },
+    uDay: { value: lastDay + 40 }, // open on the full picture; the timeline replays on demand
     uPx: { value: renderer.getPixelRatio() },
     uColors: { value: SEV_COLOR },
   };
@@ -250,39 +253,54 @@ export function createWorld(o: WorldOptions): World {
   };
 
   // Drag to turn the view; vertical page scrolling stays native.
-  let drag: { x: number; y: number; az: number; po: number } | null = null;
+  let drag: { x: number; y: number; az: number; po: number; moved: boolean } | null = null;
+  let selected: string | null = null;
+  const paint = () => {
+    for (const m of countyMeshes) {
+      const name = m.userData.name as string;
+      (m.material as THREE.MeshBasicMaterial).color.set(name === selected ? FILL_SELECTED : m === hovered ? FILL_HOVER : FILL);
+    }
+    dirty = true;
+  };
   const canvas = renderer.domElement;
   canvas.style.touchAction = 'pan-y';
   const down = (e: PointerEvent) => {
-    drag = { x: e.clientX, y: e.clientY, az: want.azimuth, po: want.polar };
+    drag = { x: e.clientX, y: e.clientY, az: want.azimuth, po: want.polar, moved: false };
     canvas.setPointerCapture(e.pointerId);
   };
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
   let hovered: THREE.Mesh | null = null;
+  const hitAt = (e: PointerEvent) => {
+    const r = canvas.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    raycaster.setFromCamera(ndc, camera);
+    return (raycaster.intersectObjects(countyMeshes)[0]?.object as THREE.Mesh | undefined) ?? null;
+  };
   const move = (e: PointerEvent) => {
     const r = canvas.getBoundingClientRect();
     if (drag) {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) > 4) drag.moved = true;
       want.azimuth = drag.az - (e.clientX - drag.x) * 0.005;
       want.polar = THREE.MathUtils.clamp(drag.po - (e.clientY - drag.y) * 0.003, 0.35, 1.25);
       return;
     }
-    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    raycaster.setFromCamera(ndc, camera);
-    const hit = raycaster.intersectObjects(countyMeshes)[0]?.object as THREE.Mesh | undefined;
+    const hit = hitAt(e);
     if (hit !== hovered) {
-      if (hovered) (hovered.material as THREE.MeshBasicMaterial).color.set(FILL);
-      hovered = hit ?? null;
-      if (hovered) (hovered.material as THREE.MeshBasicMaterial).color.set(FILL_HOVER);
-      dirty = true;
+      hovered = hit;
+      canvas.style.cursor = hovered ? 'pointer' : '';
+      paint();
     }
     o.onHover(hovered ? hovered.userData.name : null, e.clientX - r.left, e.clientY - r.top);
   };
-  const up = () => { drag = null; };
+  // A press that did not move is a click: select the county under the pointer (or clear the selection).
+  const up = (e: PointerEvent) => {
+    if (drag && !drag.moved) o.onSelect((hitAt(e)?.userData.name as string | undefined) ?? null); // works for taps too
+    drag = null;
+  };
   const leave = () => {
-    if (hovered) (hovered.material as THREE.MeshBasicMaterial).color.set(FILL);
     hovered = null;
-    dirty = true;
+    paint();
     o.onHover(null, 0, 0);
   };
   canvas.addEventListener('pointerdown', down);
@@ -324,7 +342,6 @@ export function createWorld(o: WorldOptions): World {
       if (uniforms.uDay.value >= lastDay + 40) playing = false;
       dirty = true;
     }
-    if (!still && !drag) want.azimuth += dt * 0.012; // a slow survey drift
     const ease = 1 - Math.exp(-dt * 3.2);
     const before = cam.radius + cam.polar + cam.azimuth + cam.target.x + cam.target.z;
     cam.radius += (want.radius - cam.radius) * ease;
@@ -361,6 +378,17 @@ export function createWorld(o: WorldOptions): World {
       const t = VIEWS[name];
       Object.assign(want, { radius: t.radius, polar: t.polar, azimuth: t.azimuth });
       want.target.copy(t.target);
+      if (still) Object.assign(cam, { ...want, target: want.target.clone() });
+    },
+    focus(county) {
+      selected = county;
+      paint();
+      const at = labelEls.find((l) => l.name === county)?.at;
+      if (at) {
+        Object.assign(want, { radius: 120, polar: 1.05 });
+        want.target.copy(at);
+        if (still) Object.assign(cam, { ...want, target: want.target.clone() });
+      }
     },
     setActive(a) {
       if (a === active) return;

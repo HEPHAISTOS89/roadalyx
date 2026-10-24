@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowCounterClockwiseIcon, PauseIcon, PlayIcon } from '@phosphor-icons/react';
+import { ArrowCounterClockwiseIcon, ArrowRightIcon, PauseIcon, PlayIcon, XIcon } from '@phosphor-icons/react';
 import { useApi } from '../../lib/api';
-import { county, int, pct } from '../../lib/format';
-import type { BreakdownRes, Points } from '../../lib/types';
+import { county, dateLong, int, pct } from '../../lib/format';
+import { slug } from '../../lib/filters';
+import type { BreakdownRes, Meta, Points } from '../../lib/types';
 import { createWorld, type World } from './district';
 import '../../styles/hero.css';
 
@@ -30,7 +31,13 @@ function years(start: Date, last: number) {
   return out;
 }
 
-export default function Hero() {
+/**
+ * The district at night: every located crash at its CRIS coordinates, K and A crashes as posts.
+ * The first visit of a session replays 2020 to 2026; later visits open on the full picture. Drag turns it, a click on a county opens that county's figures and a
+ * link to the Explorer, the timeline replays 2020 to 2026. Everything here is also in the Explorer,
+ * which works without WebGL.
+ */
+export default function Hero({ meta }: { meta: Meta | null }) {
   const pts = useApi<Points>('/api/v1/points');
   const byCounty = useApi<BreakdownRes>('/api/v1/breakdown?by=county');
   const host = useRef<HTMLDivElement>(null);
@@ -42,8 +49,10 @@ export default function Hero() {
   const [failed, setFailed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [day, setDay] = useState<number | null>(null);
-  const [view, setView] = useState<'district' | 'lubbock'>('district');
+  const [view, setView] = useState<'district' | 'lubbock' | null>('district');
   const [tip, setTip] = useState<{ name: string; x: number; y: number } | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [touched, setTouched] = useState(false);
 
   const days = useMemo(() => {
     if (!pts.data) return null;
@@ -70,13 +79,17 @@ export default function Hero() {
           if (now - lastPush > 60) { lastPush = now; setDay(d); }
         },
         onHover: (name, x, y) => setTip(name ? { name, x, y } : null),
+        onSelect: (name) => { setTouched(true); setPicked(name); },
       });
     } catch {
       setFailed(true);
       return;
     }
     world.current = w;
-    if (!still) { w.play(); setPlaying(true); }
+    // The timeline plays by itself once per browser session; after that it replays on demand.
+    let seen = true;
+    try { seen = sessionStorage.getItem('roadalyx-intro') === '1'; sessionStorage.setItem('roadalyx-intro', '1'); } catch { /* storage blocked: treat as seen */ }
+    if (!still && !seen) { w.play(); setPlaying(true); }
     let inView = true;
     const sync = () => w.setActive(inView && !document.hidden);
     const io = new IntersectionObserver(([e]) => { inView = e.isIntersecting; sync(); });
@@ -90,17 +103,30 @@ export default function Hero() {
     };
   }, [pts.data, gl, still]);
 
+  // A selected county moves the camera to it; clearing the selection returns to the chosen view.
+  useEffect(() => {
+    world.current?.focus(picked);
+    if (picked) setView(null);
+  }, [picked]);
+  useEffect(() => {
+    if (!picked) return;
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') setPicked(null); };
+    document.addEventListener('keydown', key);
+    return () => document.removeEventListener('keydown', key);
+  }, [picked]);
+
   // Keep the play button honest when playback reaches the last crash on its own.
   useEffect(() => {
     if (playing && days && day != null && day >= days.last) setPlaying(false);
   }, [day, days, playing]);
 
-  const shownDay = day ?? days?.last ?? 0;
+  const shownDay = Math.min(day ?? days?.last ?? 0, days?.last ?? 0);
   const atEnd = !!days && shownDay >= days.last;
   const date = days ? new Date(days.start.getTime() + shownDay * 864e5) : null;
   const toggle = () => {
     const w = world.current;
     if (!w) return;
+    setTouched(true);
     if (playing) { w.pause(); setPlaying(false); } else { w.play(); setPlaying(true); }
   };
   const scrub = (d: number) => {
@@ -109,51 +135,76 @@ export default function Hero() {
     world.current?.setDay(d);
     setDay(d);
   };
-  const go = (v: 'district' | 'lubbock') => { setView(v); world.current?.view(v); };
-  const stat = tip && byCounty.data?.groups.find((g) => g.value === tip.name);
+  const go = (v: 'district' | 'lubbock') => { setPicked(null); setView(v); world.current?.view(v); };
+  const stat = (name: string | null) => (name ? byCounty.data?.groups.find((g) => g.value === name) : undefined);
+  const hover = tip ? stat(tip.name) : undefined;
+  const sel = stat(picked);
   const broken = !gl || failed || !!pts.error;
 
   return (
     <section ref={section} className="hero" aria-labelledby="hero-h">
       <div ref={host} className="hero-stage" data-state={broken ? 'broken' : pts.data ? 'ready' : 'loading'}
         role="img" aria-label={pts.data
-          ? `Map of the 17 counties of the TxDOT Lubbock District with ${int(pts.data.located)} injury crashes drawn at their reported locations. Fatal and serious-injury crashes stand as red and orange posts. Drag to turn the view.`
-          : 'Map of the Lubbock District, loading'}>
+          ? `Map of the 17 counties of the TxDOT Lubbock District with ${int(pts.data.located)} injury crashes drawn at their reported locations. Fatal and serious-injury crashes stand as red and orange posts.`
+          : 'Map of the Lubbock District, loading'}
+        onPointerDown={() => setTouched(true)}>
         <div ref={labels} className="hero-labels" aria-hidden="true" />
-        {tip && (
+        {tip && tip.name !== picked && (
           <div className="hero-tip" style={{ transform: `translate(${tip.x + 14}px, ${tip.y + 14}px)` }} aria-hidden="true">
             <b>{county(tip.name)} County</b>
-            {stat ? <span>{int(stat.crashes)} injury crashes · {pct(stat.ka_share)} fatal or serious</span> : null}
+            {hover ? <span>{int(hover.crashes)} crashes · {pct(hover.ka_share)} K or A</span> : null}
           </div>
         )}
         {broken && (
           <p className="hero-fallback">
             {pts.error ? 'The crash data could not be loaded. Reload the page to try again.'
-              : 'This browser cannot draw the 3D map (WebGL 2 is off or unavailable). Every number is still in the Explorer.'}
+              : 'This browser cannot draw the 3D map (WebGL 2 is off or unavailable). The Explorer has every figure and a 2D map.'}
           </p>
         )}
+        {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">Drag to turn · click a county</p>}
       </div>
 
       <div className="hero-copy">
         <h1 id="hero-h">Every injury crash in the Lubbock District since 2020, where it happened.</h1>
-        <p className="lede">
-          {pts.data ? int(pts.data.total) : 'All'} crashes from TxDOT CRIS across 17 counties of the South Plains, cleaned to
-          one record per crash and served by a public API. Fatal and serious crashes rise as posts.
-        </p>
+        <dl className="hero-scope">
+          <div><dt>Crashes</dt><dd className="num">{pts.data ? int(pts.data.total) : '–'}</dd></div>
+          <div><dt>Severity</dt><dd>K, A, B, C</dd></div>
+          <div><dt>Counties</dt><dd className="num">{meta ? meta.filters.county.length : '–'}</dd></div>
+          <div><dt>Period</dt><dd>{meta ? `${dateLong(meta.coverage.start)} – ${dateLong(meta.coverage.end)}` : '–'}</dd></div>
+        </dl>
         <div className="actions">
           <Link className="btn primary" to="/explorer">Open the Explorer</Link>
           <Link className="btn" to="/platform">How it is built</Link>
         </div>
       </div>
 
-      <div className="hero-views" role="group" aria-label="Map view">
-        <button type="button" aria-pressed={view === 'district'} onClick={() => go('district')} disabled={broken}>District</button>
-        <button type="button" aria-pressed={view === 'lubbock'} onClick={() => go('lubbock')} disabled={broken}>Lubbock</button>
+      <div className="hero-side">
+        <div className="hero-views" role="group" aria-label="Camera">
+          <button type="button" aria-pressed={view === 'district'} onClick={() => go('district')} disabled={broken}>District</button>
+          <button type="button" aria-pressed={view === 'lubbock'} onClick={() => go('lubbock')} disabled={broken}>Lubbock</button>
+        </div>
+        {picked && (
+          <section className="hero-county" aria-labelledby="county-h">
+            <div className="hero-county-head">
+              <h2 id="county-h">{county(picked)} County</h2>
+              <button type="button" className="icon-btn small" onClick={() => setPicked(null)} aria-label="Close county figures"><XIcon /></button>
+            </div>
+            {sel ? (
+              <dl>
+                <div><dt>Crashes</dt><dd className="num">{int(sel.crashes)}</dd></div>
+                <div><dt>K + A share</dt><dd className="num">{pct(sel.ka_share)}</dd></div>
+                <div><dt><i className="sw k" />Fatal</dt><dd className="num">{int(sel.K)}</dd></div>
+                <div><dt>Deaths</dt><dd className="num">{int(sel.deaths)}</dd></div>
+              </dl>
+            ) : <p className="muted">Loading…</p>}
+            <Link className="finding-cta" to={`/explorer?county=${slug(picked)}`}>Open in the Explorer<ArrowRightIcon aria-hidden="true" /></Link>
+          </section>
+        )}
       </div>
 
       <div className="hero-hud">
         <button type="button" className="icon-btn" onClick={toggle} disabled={broken || !days}
-          aria-label={playing ? 'Pause the timeline' : atEnd ? 'Replay from January 2020' : 'Play the timeline'}>
+          aria-label={playing ? 'Pause the timeline' : atEnd ? 'Replay 2020 to 2026' : 'Play the timeline'}>
           {playing ? <PauseIcon weight="fill" /> : atEnd ? <ArrowCounterClockwiseIcon weight="bold" /> : <PlayIcon weight="fill" />}
         </button>
         <label className="hud-track">
@@ -169,8 +220,8 @@ export default function Hero() {
         </label>
         <p className="hud-date num">{date ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ' '}</p>
         <dl className="hud-counts">
-          <div title={pts.data ? `${int(pts.data.total - pts.data.located)} crashes have no coordinates in CRIS: they count everywhere except on this map.` : undefined}>
-            <dt>Located crashes</dt><dd className="num">{days ? int(upTo(days.all, shownDay)) : '–'}</dd>
+          <div title={pts.data ? `${int(pts.data.total - pts.data.located)} crashes have no coordinates in CRIS: they count in every figure but cannot be drawn.` : undefined}>
+            <dt>On the map</dt><dd className="num">{days ? int(upTo(days.all, shownDay)) : '–'}</dd>
           </div>
           <div><dt><i className="sw k" />Fatal (K)</dt><dd className="num">{days ? int(upTo(days.K, shownDay)) : '–'}</dd></div>
           <div><dt><i className="sw a" />Serious (A)</dt><dd className="num">{days ? int(upTo(days.A, shownDay)) : '–'}</dd></div>
