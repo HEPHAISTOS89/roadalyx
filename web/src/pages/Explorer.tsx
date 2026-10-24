@@ -22,7 +22,7 @@ function Scope({ meta, total, located }: { meta: Meta; total: number | null; loc
   const label = (list: { value: string; label: string }[], v: string) => list.find((c) => c.value === v)?.label ?? v;
   const parts = [
     f.county.length ? f.county.map((c) => county(label(meta.filters.county, c))).join(', ') + (f.county.length > 1 ? ' counties' : ' County') : 'all 17 counties',
-    f.yearFrom || f.yearTo ? `${f.yearFrom ?? meta.filters.year[0]}–${f.yearTo ?? meta.filters.year.at(-1)}` : `${meta.filters.year[0]}–${meta.filters.year.at(-1)}`,
+    ((from, to) => (from === to ? String(from) : `${from}–${to}`))(f.yearFrom ?? meta.filters.year[0], f.yearTo ?? meta.filters.year.at(-1)),
     f.severity.length ? `severity ${f.severity.join(', ')}` : null,
     f.roadClass.length ? f.roadClass.map((r) => title(label(meta.filters.road_class, r))).join(', ') : null,
     f.factor ? `citing “${title(label(meta.filters.factor, f.factor)).toLowerCase()}”` : null,
@@ -32,6 +32,7 @@ function Scope({ meta, total, located }: { meta: Meta; total: number | null; loc
     <p className="scope" aria-live="polite">
       <b className="num">{total == null ? '…' : int(total)}</b> injury crashes · {parts.join(' · ')}
       {located != null && total != null && total > located ? <span className="muted"> · {int(total - located)} without coordinates are left off the map</span> : null}
+      {total === 0 && <span className="scope-empty"> · nothing matches: widen or reset the filters</span>}
     </p>
   );
 }
@@ -90,7 +91,7 @@ export default function Explorer() {
           <div className="side">
             <section className="panel" aria-labelledby="sev-h">
               <div className="panel-head"><h2 id="sev-h">Severity</h2></div>
-              {s ? <SeverityBars data={s} /> : <div className="ph" />}
+              {s ? <SeverityBars data={s} active={filters.severity} onPick={(code) => set({ severity: filters.severity.includes(code) ? filters.severity.filter((x) => x !== code) : [...filters.severity, code] })} /> : <div className="ph" />}
             </section>
             <section className="panel" aria-labelledby="fac-h">
               <div className="panel-head">
@@ -113,7 +114,7 @@ export default function Explorer() {
                 ))}
               </div>
             </div>
-            {trend.data ? <TrendChart buckets={trend.data.buckets} by={trend.data.by} /> : <div className="ph" />}
+            {trend.data ? <TrendChart buckets={trend.data.buckets} by={trend.data.by} onPickYear={(y) => set({ yearFrom: y, yearTo: y })} /> : <div className="ph" />}
           </section>
           <section className="panel" aria-labelledby="heat-h">
             <div className="panel-head">

@@ -12,15 +12,18 @@ function niceMax(v: number) {
 }
 
 /** KABCO counts as one horizontal bar each; the share sits beside the count, in ink, not in the bar colour. */
-export function SeverityBars({ data }: { data: SeverityRes }) {
+export function SeverityBars({ data, active, onPick }: { data: SeverityRes; active: Sev[]; onPick: (s: Sev) => void }) {
   const max = Math.max(...data.severity.map((s) => s.crashes), 1);
   return (
     <ul className="hbars" aria-label="Crashes by severity">
       {data.severity.map((s) => (
         <li key={s.code}>
-          <span className="hbar-label"><b>{s.code}</b> {SEV_NAME[s.code]}</span>
-          <span className="hbar-track"><i style={{ width: `${(s.crashes / max) * 100}%`, background: SEV_VAR[s.code] }} /></span>
-          <span className="hbar-val num">{int(s.crashes)}<small>{pct(s.share)}</small></span>
+          <button type="button" className={active.includes(s.code) ? 'on' : ''} aria-pressed={active.includes(s.code)}
+            onClick={() => onPick(s.code)} aria-label={`${SEV_NAME[s.code]}: ${int(s.crashes)} crashes. Filter by ${s.code}.`}>
+            <span className="hbar-label"><b>{s.code}</b> {SEV_NAME[s.code]}</span>
+            <span className="hbar-track"><i style={{ width: `${(s.crashes / max) * 100}%`, background: SEV_VAR[s.code] }} /></span>
+            <span className="hbar-val num">{int(s.crashes)}<small>{pct(s.share)}</small></span>
+          </button>
         </li>
       ))}
     </ul>
@@ -37,6 +40,7 @@ export function FactorBars({ rows, total, onPick, active }: { rows: FactorRow[];
       <div className="factors-head" aria-hidden="true">
         <span>Contributing factor</span><span>Crashes citing it</span><span>Share K + A</span>
       </div>
+      {rows.length === 0 && <p className="empty-note">No coded factor in this selection.</p>}
       <ol>
         {rows.map((r) => {
           const slugged = r.factor.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -62,7 +66,7 @@ export function FactorBars({ rows, total, onPick, active }: { rows: FactorRow[];
 }
 
 /** Stacked columns by severity over one time axis. Partial periods are drawn hollow and labelled. */
-export function TrendChart({ buckets, by }: { buckets: Bucket[]; by: string }) {
+export function TrendChart({ buckets, by, onPickYear }: { buckets: Bucket[]; by: string; onPickYear?: (year: number) => void }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const { show, hide } = useTip();
   const h = 240, m = { t: 12, r: 8, b: 26, l: 44 };
@@ -87,10 +91,13 @@ export function TrendChart({ buckets, by }: { buckets: Bucket[]; by: string }) {
             const bx = x(String(b.key))!;
             const bw = x.bandwidth();
             return (
-              <g key={b.key} onPointerMove={(e) => show(e, <>
+              <g key={b.key} className={by === 'year' && onPickYear ? 'pickable' : undefined}
+                onClick={by === 'year' && onPickYear ? () => { hide(); onPickYear(b.key as number); } : undefined}
+                onPointerMove={(e) => show(e, <>
                 <b>{b.label}{b.complete ? '' : ' (partial)'}</b>
                 <span>{int(b.crashes)} crashes</span>
                 {SEVS.map((s) => <span key={s}><i className={`sw ${s.toLowerCase()}`} />{s} {int(b[s])}</span>)}
+                {by === 'year' && onPickYear && <span className="muted">Click to keep only {b.label}</span>}
               </>)} onPointerLeave={hide}>
                 <rect x={bx - 2} y={m.t} width={bw + 4} height={h - m.b - m.t} fill="transparent" />
                 {SEVS.map((s) => {

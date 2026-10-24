@@ -19,7 +19,7 @@ export const project = (lon: number, lat: number) => new THREE.Vector3((lon - LO
 const GROUND = 0x0b0c0b;
 const FILL = 0x0d0e0d;
 const FILL_HOVER = 0x1a1f1a;
-const FILL_SELECTED = 0x23302a;
+const FILL_SELECTED = 0x141b16;
 const SEV_INDEX: Record<string, number> = { K: 0, A: 1, B: 2, C: 3 };
 // Same ramp as --sev-* in tokens.css (validated ordinal ramp: lightness falls from C to K).
 const SEV_COLOR = ['#d31246', '#f27000', '#e7b63b', '#d0d8e1'].map((c) => new THREE.Color(c));

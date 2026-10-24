@@ -109,8 +109,13 @@
 .sev-chip.k { background: var(--sev-k); color: #fff; } .sev-chip.a { background: var(--sev-a); } .sev-chip.b { background: var(--sev-b); } .sev-chip.c { background: var(--sev-c); }
 
 /* Horizontal bars */
-.hbars { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.hbars li { display: grid; grid-template-columns: 150px 1fr 96px; gap: 12px; align-items: center; font-size: var(--t-label); }
+.hbars { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.hbars li button { width: 100%; display: grid; grid-template-columns: 150px 1fr 96px; gap: 12px; align-items: center; font-size: var(--t-label);
+  border: 0; background: none; padding: 5px 6px; border-radius: var(--r-s); text-align: left; }
+.hbars li button:hover { background: var(--raise); }
+.hbars li button.on { background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: inset 2px 0 0 var(--accent); }
+.chart .pickable { cursor: pointer; }
+.chart .pickable:hover rect { filter: brightness(1.15); }
 .hbar-label { color: var(--ink-2); white-space: nowrap; }
 .hbar-label b { color: var(--ink); margin-right: 4px; }
 .hbar-track { height: 12px; background: var(--panel); border-radius: 3px; overflow: hidden; }
@@ -173,7 +178,10 @@ table.data tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparen
   /* On a phone the filter block would cover a quarter of the screen: let it scroll away. */
   .explorer-top { position: static; }
   .map-legend { gap: 8px; padding: 4px 8px; flex-wrap: wrap; max-width: calc(100% - 60px); }
-  .hbars li { grid-template-columns: 112px 1fr 84px; }
+  .hbars li button { grid-template-columns: 112px 1fr 84px; }
   .reset { margin-left: 0; }
   .panel { padding: var(--s4); }
 }
+
+.empty-note { font-size: var(--t-label); color: var(--ink-3); padding: var(--s3) 6px; }
+.scope-empty { color: var(--warn); }

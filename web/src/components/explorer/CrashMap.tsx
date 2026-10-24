@@ -11,6 +11,7 @@ const DISTRICT: [[number, number], [number, number]] = [[-103.07, 32.52], [-101.
 const SEV_COLOR = ['match', ['get', 's'], 'K', '#d31246', 'A', '#f27000', 'B', '#e7b63b', '#d0d8e1'];
 
 setWorkerUrl(workerUrl);
+const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 let style: Promise<StyleSpecification> | null = null;
 /** OpenFreeMap's dark style, quietened so the crash marks carry the colour. */
@@ -100,6 +101,12 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
       geometry: { type: 'Point' as const, coordinates: [points.lon[i], points.lat[i]] },
     }));
     (map.current.getSource('crashes') as GeoJSONSource).setData({ type: 'FeatureCollection', features });
+    // Frame the selection so a filtered set is never off screen; an empty one keeps the district view.
+    if (points.lon.length) {
+      const bounds: [[number, number], [number, number]] = [
+        [Math.min(...points.lon), Math.min(...points.lat)], [Math.max(...points.lon), Math.max(...points.lat)]];
+      map.current.fitBounds(bounds, { padding: 40, maxZoom: 12, duration: reduced() ? 0 : 600 });
+    }
   }, [ready, points]);
 
   useEffect(() => {
@@ -108,12 +115,12 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
     m.setFilter('crash-selected', ['==', ['get', 'id'], selected ?? -1]);
     if (selected == null || !points) return;
     const i = points.id.indexOf(selected);
-    if (i >= 0) m.easeTo({ center: [points.lon[i], points.lat[i]], zoom: Math.max(m.getZoom(), 12), duration: 600 });
+    if (i >= 0) m.easeTo({ center: [points.lon[i], points.lat[i]], zoom: Math.max(m.getZoom(), 12), duration: reduced() ? 0 : 600 });
   }, [ready, selected, points]);
 
   return (
     <div className="map" ref={el} role="region" aria-label="Crash map. Click a crash mark to open its record; the records table below lists the same crashes.">
-      {failed && <p className="map-msg">The basemap could not be loaded. The charts and tables below are unaffected.</p>}
+      {failed && <p className="map-msg">The map could not be drawn (WebGL unavailable or the basemap unreachable). Every chart and table on this page still works.</p>}
       <ul className="map-legend" aria-label="Severity legend">
         <li><i className="sw k" />K fatal</li><li><i className="sw a" />A serious</li><li><i className="sw b" />B minor</li><li><i className="sw c" />C possible</li>
       </ul>
