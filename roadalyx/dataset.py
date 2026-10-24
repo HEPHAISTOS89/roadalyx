@@ -1,0 +1,77 @@
+"""The processed dataset: crash records plus provenance, stored as one gzipped JSON file.
+
+The pipeline writes it once; the API reads it at start-up from a local path or from S3.
+"""
+
+from __future__ import annotations
+
+import gzip
+import json
+import re
+from functools import lru_cache
+from dataclasses import dataclass
+from datetime import date
+from pathlib import Path
+
+SCHEMA_VERSION = 1
+VRU_TYPES = ("pedestrian", "pedalcyclist", "motorcyclist")
+
+
+@lru_cache(maxsize=4096)  # a few hundred distinct labels, compared on every request
+def slug(value) -> str:
+    """'US & STATE HIGHWAYS' -> 'us-state-highways'. Filters compare slugs, so case and punctuation never matter."""
+    return re.sub(r"[^a-z0-9]+", "-", str(value).lower()).strip("-")
+
+
+@dataclass
+class Dataset:
+    crashes: list[dict]
+    meta: dict
+
+    def __post_init__(self):
+        dates = [c["date"] for c in self.crashes]
+        self.coverage = (date.fromisoformat(min(dates)), date.fromisoformat(max(dates)))
+        self.by_id = {c["id"]: c for c in self.crashes}
+        self.options = {
+            "county": _choices(c["county"] for c in self.crashes),
+            "road_class": _choices(c["road_class"] for c in self.crashes),
+            "factor": _choices(f for c in self.crashes for f in c["factors"]),
+            "year": sorted({c["year"] for c in self.crashes}),
+            "severity": ["K", "A", "B", "C"],
+            "vru": list(VRU_TYPES),
+        }
+
+
+def _choices(values) -> list[dict]:
+    """Distinct values with their slug and crash count, most frequent first."""
+    counts: dict[str, int] = {}
+    for v in values:
+        if v is not None:
+            counts[v] = counts.get(v, 0) + 1
+    return [{"value": slug(v), "label": v, "crashes": n}
+            for v, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
+def save(path: str | Path, crashes: list[dict], meta: dict) -> Path:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body = {"schema_version": SCHEMA_VERSION, "meta": meta, "crashes": crashes}
+    # mtime=0 makes the file byte-identical for identical data, so re-runs do not look like new data.
+    with gzip.GzipFile(path, "wb", mtime=0) as f:
+        f.write(json.dumps(body, separators=(",", ":")).encode())
+    return path
+
+
+def load(source: str) -> Dataset:
+    """Load from a local path or an s3://bucket/key URI."""
+    if source.startswith("s3://"):
+        import boto3  # present in the Lambda runtime; only needed when reading from S3
+
+        bucket, _, key = source[5:].partition("/")
+        raw = boto3.client("s3").get_object(Bucket=bucket, Key=key)["Body"].read()
+    else:
+        raw = Path(source).read_bytes()
+    body = json.loads(gzip.decompress(raw))
+    if body.get("schema_version") != SCHEMA_VERSION:
+        raise ValueError(f"{source}: schema version {body.get('schema_version')}, expected {SCHEMA_VERSION}")
+    return Dataset(crashes=body["crashes"], meta=body["meta"])

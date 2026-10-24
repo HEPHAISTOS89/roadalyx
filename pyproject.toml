@@ -1,0 +1,15 @@
+[project]
+name = "roadalyx"
+version = "1.0.0"
+description = "TxDOT CRIS crash analytics for the Lubbock District"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+# Upstream deprecations in the test client and Mangum, not in this code.
+filterwarnings = ["ignore:Using `httpx`", "ignore:There is no current event loop:DeprecationWarning"]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"

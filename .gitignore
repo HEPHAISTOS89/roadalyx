@@ -1,19 +1,29 @@
-# Assessment material from the lab (raw CRIS export, brief) stays local
+# The lab's material and the raw CRIS export stay local (see README, "Data")
 original/
+data/raw/*
+!data/raw/README.md
+data/processed/
 *.xlsx
 ~$*
+
+# Build outputs
+roadalyx/web/
+web/node_modules/
+web/dist/
+build/
 
 # Python
 .venv/
 __pycache__/
 *.pyc
 .pytest_cache/
+.ipynb_checkpoints/
 
 # OS / editors
 .DS_Store
 .vscode/
 .idea/
 
-# Secrets
+# Secrets never belong in the repo
 .env
 .env.*

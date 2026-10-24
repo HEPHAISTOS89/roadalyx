@@ -1,0 +1,18 @@
+﻿"All crash data available using this tool represents reportable data (test fixture, not real crashes)."
+
+"Query Result Counts:"
+"Your query returned a total of 4 Crashes containing 5 Units and 7 Persons"
+
+"Filters Applied to current Query:"
+"Crash Year Is In  2024 or 2025"
+"TxDOT District Is Equal To LUBBOCK"
+
+
+"Crash ID","Crash Date","Crash Time","Crash Year","County","Crash Severity","Crash Death Count","Crash Suspected Serious Injury Count","Crash Total Injury Count","Contributing Factors","Road Class","Speed Limit","Latitude","Longitude","Rural Flag","Intersection Related","At Intersection Flag","Weather Condition","Manner of Collision","First Harmful Event","Street Name","Construction Zone Flag","Active School Zone Flag","TxDOT Reportable Flag","Person Type"
+"100","2024-03-05","5","2024","LUBBOCK","A - SUSPECTED SERIOUS INJURY","0","1","2","FAILED TO CONTROL SPEED; UNSAFE SPEED","CITY STREET","-1","No Data","No Data","No","INTERSECTION","true","1 - CLEAR","ANGLE - BOTH GOING STRAIGHT","MOTOR VEHICLE IN TRANSPORT","19TH ST","No","NO","Yes","1 - DRIVER"
+"100","2024-03-05","5","2024","LUBBOCK","A - SUSPECTED SERIOUS INJURY","0","1","2","FAILED TO CONTROL SPEED; UNSAFE SPEED","CITY STREET","-1","No Data","No Data","No","INTERSECTION","true","1 - CLEAR","ANGLE - BOTH GOING STRAIGHT","MOTOR VEHICLE IN TRANSPORT","19TH ST","No","NO","Yes","2 - PASSENGER/OCCUPANT"
+"100","2024-03-05","5","2024","LUBBOCK","A - SUSPECTED SERIOUS INJURY","0","1","2","FAILED TO CONTROL SPEED; UNSAFE SPEED","CITY STREET","-1","No Data","No Data","No","INTERSECTION","true","1 - CLEAR","ANGLE - BOTH GOING STRAIGHT","MOTOR VEHICLE IN TRANSPORT","19TH ST","No","NO","Yes","4 - PEDESTRIAN"
+"101","2025-12-31","2359","2025","HALE","K - FATAL INJURY","1","0","1","NONE","US & STATE HIGHWAYS","75","33.58","-101.85","Yes","INTERSECTION","false","3 - RAIN","ANGLE - BOTH GOING STRAIGHT","MOTOR VEHICLE IN TRANSPORT","19TH ST","YES","no","Yes","1 - DRIVER"
+"102","2024-07-04","1730","2024","lubbock ","C - POSSIBLE INJURY","0","0","1","FAILED TO CONTROL SPEED;DRIVER INATTENTION","CITY STREET","30","33.58","-101.85","No","INTERSECTION","false","1 - CLEAR","ANGLE - BOTH GOING STRAIGHT","MOTOR VEHICLE IN TRANSPORT","19TH ST","No","NO","Yes","1 - DRIVER"
+"102","2024-07-04","1730","2024","lubbock ","C - POSSIBLE INJURY","0","0","1","FAILED TO CONTROL SPEED;DRIVER INATTENTION","CITY STREET","30","33.58","-101.85","No","INTERSECTION","false","1 - CLEAR","ANGLE - BOTH GOING STRAIGHT","MOTOR VEHICLE IN TRANSPORT","19TH ST","No","NO","Yes","5 - DRIVER OF MOTORCYCLE TYPE VEHICLE"
+"103","2024-07-06","2460","2024","LUBBOCK","B - SUSPECTED MINOR INJURY","0","0","1","OTHER (EXPLAIN IN NARRATIVE)","NON TRAFFICWAY","30","0.0","0.0","No","INTERSECTION","false","1 - CLEAR","ANGLE - BOTH GOING STRAIGHT","MOTOR VEHICLE IN TRANSPORT","19TH ST","No","NO","No","1 - DRIVER"
