@@ -103,7 +103,7 @@ class Crash(BaseModel):
     severity: Severity
     deaths: int
     serious_injuries: int
-    injuries: int
+    injuries: int = Field(description="People injured but not killed (CRIS Crash Total Injury Count).")
     people: int = Field(description="Person rows in the export for this crash.")
     factors: list[str]
     road_class: str | None

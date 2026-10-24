@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Roadalyx: read-only crash analytics API and portal on one AWS Lambda function with a public
+  function URL. The processed dataset is read from a private S3 object at cold start.
+  Free-tier services only: Lambda, S3, IAM, CloudWatch Logs.
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: Private bucket holding the code package and the processed dataset (created by scripts/deploy.sh).
+  CodeKey:
+    Type: String
+    Description: S3 key of the Lambda zip, e.g. releases/<hash>.zip
+  DataKey:
+    Type: String
+    Default: data/crashes.json.gz
+  DataVersion:
+    Type: String
+    Description: ETag of the dataset object. Changing it updates the function configuration, so new instances load the new data.
+
+Resources:
+  ApiLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/roadalyx-api
+      RetentionInDays: 14
+
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Roadalyx API. Writes its own logs and reads one S3 object; nothing else.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: roadalyx-api
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !Sub "${ApiLogs.Arn}"
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${BucketName}/${DataKey}"
+
+  Api:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: roadalyx-api
+      Description: Roadalyx REST API and portal (FastAPI + Mangum)
+      Runtime: python3.13
+      Architectures: [arm64]
+      Handler: roadalyx.api.handler
+      MemorySize: 1024
+      Timeout: 10
+      Role: !GetAtt ApiRole.Arn
+      Code:
+        S3Bucket: !Ref BucketName
+        S3Key: !Ref CodeKey
+      Environment:
+        Variables:
+          ROADALYX_DATA: !Sub "s3://${BucketName}/${DataKey}"
+          ROADALYX_DATA_VERSION: !Ref DataVersion
+      LoggingConfig:
+        LogGroup: !Ref ApiLogs
+        LogFormat: Text
+
+  ApiUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !Ref Api
+      AuthType: NONE
+      InvokeMode: BUFFERED
+      Cors:
+        AllowOrigins: ["*"]
+        AllowMethods: [GET]
+        MaxAge: 3600
+
+  # A public function URL needs both grants, and the second one only through the URL.
+  PublicUrlInvoke:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref Api
+      Action: lambda:InvokeFunctionUrl
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+  PublicInvokeViaUrl:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref Api
+      Action: lambda:InvokeFunction
+      Principal: "*"
+      InvokedViaFunctionUrl: true
+
+Outputs:
+  Url:
+    Description: Public URL of the portal and the API
+    Value: !GetAtt ApiUrl.FunctionUrl
+  LogGroup:
+    Value: !Ref ApiLogs

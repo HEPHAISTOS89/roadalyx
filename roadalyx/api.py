@@ -17,7 +17,6 @@ import json
 import os
 import sys
 import time
-from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
@@ -41,6 +40,10 @@ CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';
        "img-src 'self' data: blob: https://tiles.openfreemap.org; font-src 'self' data:; "
        "connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; "
        "frame-ancestors 'none'; base-uri 'self'; form-action 'none'")
+# Swagger UI (/api/docs) loads its script and stylesheet from jsDelivr; only that page may.
+DOCS_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' https://cdn.jsdelivr.net; img-src 'self' data: https://fastapi.tiangolo.com; "
+            "connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'")
 SECURITY_HEADERS = {
     "Content-Security-Policy": CSP,
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
@@ -79,6 +82,8 @@ async def headers_and_access_log(request: Request, call_next):
     started = time.perf_counter()
     response = await call_next(request)
     response.headers.update(SECURITY_HEADERS)
+    if request.url.path == app.docs_url:
+        response.headers["Content-Security-Policy"] = DOCS_CSP
     if request.url.path.startswith("/api/") and "cache-control" not in response.headers:
         # The data changes only on redeploy: let browsers reuse answers for five minutes.
         response.headers["Cache-Control"] = "public, max-age=300"
@@ -269,15 +274,14 @@ def crash(crash_id: int):
 def points(f: FilterDep):
     rows = f.apply(data().crashes)
     located = [c for c in rows if c["lat"] is not None and c["lon"] is not None]
-    start = data().coverage[0]
     return _envelope(f, rows, {
         "located": len(located),
-        "start": start.isoformat(),
+        "start": data().coverage[0].isoformat(),
         "id": [c["id"] for c in located],
         "lon": [c["lon"] for c in located],
         "lat": [c["lat"] for c in located],
         "severity": "".join(c["severity"] for c in located),
-        "day": [(date.fromisoformat(c["date"]) - start).days for c in located],
+        "day": [data().day[c["id"]] for c in located],
     })
 
 

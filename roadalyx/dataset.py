@@ -32,6 +32,8 @@ class Dataset:
         dates = [c["date"] for c in self.crashes]
         self.coverage = (date.fromisoformat(min(dates)), date.fromisoformat(max(dates)))
         self.by_id = {c["id"]: c for c in self.crashes}
+        # Days since the first date, for timeline playback; computed once, not per request.
+        self.day = {c["id"]: (date.fromisoformat(c["date"]) - self.coverage[0]).days for c in self.crashes}
         self.options = {
             "county": _choices(c["county"] for c in self.crashes),
             "road_class": _choices(c["road_class"] for c in self.crashes),

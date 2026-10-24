@@ -8,18 +8,20 @@ export interface Filters {
   yearFrom: number | null; yearTo: number | null; factor: string | null;
 }
 
-const list = (v: string | null) => (v ? v.split(',').filter(Boolean) : []);
+/** Same rule as roadalyx.dataset.slug: filters compare slugs, so 'US & STATE HIGHWAYS' = 'us-state-highways'. */
+export const slug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+const list = (v: string | null) => (v ? [...new Set(v.split(',').map(slug).filter(Boolean))] : []);
 const num = (v: string | null) => (v && /^\d{4}$/.test(v) ? Number(v) : null);
 
 export function parseFilters(q: URLSearchParams): Filters {
   return {
     county: list(q.get('county')),
-    severity: list(q.get('severity')).map((s) => s.toUpperCase()).filter((s): s is Sev => 'KABC'.includes(s) && s.length === 1),
+    severity: list(q.get('severity')).map((s) => s.toUpperCase()).filter((s): s is Sev => s.length === 1 && 'KABC'.includes(s)),
     roadClass: list(q.get('road_class')),
     vru: list(q.get('vru')),
     yearFrom: num(q.get('year_from')),
     yearTo: num(q.get('year_to')),
-    factor: q.get('factor') || null,
+    factor: q.get('factor') ? slug(q.get('factor')!) || null : null,
   };
 }
 

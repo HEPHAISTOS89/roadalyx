@@ -103,6 +103,9 @@ def test_security_and_cache_headers():
     assert r.headers["x-content-type-options"] == "nosniff"
     assert r.headers["cache-control"] == "public, max-age=300"
     assert client.get("/api/nope").status_code == 404
+    docs = client.get("/api/docs")
+    assert docs.status_code == 200 and "cdn.jsdelivr.net" in docs.headers["content-security-policy"]
+    assert "cdn.jsdelivr.net" not in r.headers["content-security-policy"]
     assert client.post("/api/v1/severity").status_code == 405  # read-only API
 
 
