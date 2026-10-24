@@ -110,7 +110,8 @@ export default function Architecture({ meta, health, rtt, ping }: {
     setTracing(true);
     const h = await ping();
     const s = svg.current, d = dot.current;
-    if (!h || reduced() || !s || !d) { setTracing(false); return; }
+    // No animation when motion is reduced or the edges are hidden (narrow layout): the request still ran.
+    if (!h || reduced() || !s || !d || getComputedStyle(s).display === 'none') { setTracing(false); return; }
     const leg = (id: string, reverse: boolean) => ({ p: s.querySelector<SVGPathElement>(`[data-edge="${id}"]`)!, reverse });
     // client->url and url->lambda are drawn left-to-right from lambda's side, so travel them in reverse
     const out = [leg('client-url', true), leg('url-lambda', true), ...(h.instance_age_s < 5 ? [leg('s3-lambda', true)] : [])];
