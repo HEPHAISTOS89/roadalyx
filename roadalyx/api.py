@@ -200,6 +200,11 @@ SORTS = {
 CSV_FIELDS = list(schemas.Crash.model_fields)
 
 
+def _csv_safe(value):
+    """Text from police reports could start with = + - @: quote it so a spreadsheet never runs it as a formula."""
+    return "'" + value if isinstance(value, str) and value[:1] in ("=", "+", "-", "@", "\t", "\r") else value
+
+
 @app.get("/api/v1/crashes", response_model=schemas.CrashPage, tags=["records"],
          summary="Crash records, paginated (JSON) or all of them (CSV)",
          responses={200: {"content": {"text/csv": {}}}})
@@ -216,7 +221,8 @@ def crashes(f: FilterDep,
         writer = csv.DictWriter(out, fieldnames=CSV_FIELDS, extrasaction="ignore")
         writer.writeheader()
         for c in rows:
-            writer.writerow({**c, "factors": "; ".join(c["factors"]), "vru": "; ".join(c["vru"])})
+            row = {**c, "factors": "; ".join(c["factors"]), "vru": "; ".join(c["vru"])}
+            writer.writerow({k: _csv_safe(v) for k, v in row.items()})
         # Always gzipped: the full export is ~6 MB raw, the Lambda response limit. Browsers, pandas and
         # requests decode it transparently; curl needs --compressed.
         return Response(gzip.compress(out.getvalue().encode(), mtime=0), media_type="text/csv; charset=utf-8",

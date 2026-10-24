@@ -115,3 +115,9 @@ def test_lambda_function_url_event():
     if out["headers"].get("content-encoding") == "gzip":
         body = gzip.decompress(body)
     assert json.loads(body)["total"] == 3
+
+
+def test_csv_cells_cannot_become_spreadsheet_formulas():
+    from roadalyx.api import _csv_safe
+    assert _csv_safe("=HYPERLINK(1)") == "'=HYPERLINK(1)"
+    assert _csv_safe("19TH ST") == "19TH ST" and _csv_safe(-1) == -1
