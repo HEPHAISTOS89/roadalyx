@@ -114,7 +114,7 @@ Client -> public HTTPS function URL -> Lambda / FastAPI
 | CloudWatch Logs | It records request status and duration. I set retention to 14 days. |
 | CloudFormation | It keeps the function, role, URL and log configuration in a reviewable template. |
 
-A request reaches FastAPI through Mangum, the Lambda adapter. FastAPI validates the filters, selects the crashes and returns the computed result. The same function serves the optional frontend.
+A request reaches FastAPI through Mangum, the Lambda adapter. FastAPI validates the filters, selects the crashes and returns the computed result. The same function serves the frontend.
 
 To deploy to an AWS account with an authenticated AWS CLI session:
 
@@ -139,9 +139,9 @@ The default region is `us-east-2`; set `AWS_REGION` to change it. The deployment
 
 Given more time, I would add a rate limit and a controlled way to refresh the dataset. I would not add more visual features before those safeguards.
 
-## Optional frontend
+## Frontend
 
-I added a React frontend in [web](web/) as optional work, separate from the required pipeline and API. The Explorer lets an analyst filter the same data, view charts and a map, inspect crash records and download the selection.
+I built a React frontend in [web](web/) on top of the same API. The Explorer lets an analyst filter the same data, view charts and a map, inspect crash records and download the selection.
 
 Overview is an additional 3D view of located crashes. Its effects are visual, not measures of risk.
 
@@ -153,7 +153,7 @@ npm --prefix web run dev
 npm --prefix web test
 ```
 
-`npm --prefix web run build` writes the frontend to `roadalyx/web`, which FastAPI serves at `/`. The frontend is optional for running and reviewing the required API.
+`npm --prefix web run build` writes the frontend to `roadalyx/web`, which FastAPI serves at `/`. The API runs and can be reviewed without it.
 
 ---
 
