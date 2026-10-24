@@ -1,8 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { useApi } from '../lib/api';
-import { dateLong } from '../lib/format';
-import type { Meta } from '../lib/types';
 
 export const REPO = 'https://github.com/HEPHAISTOS89/roadalyx';
 
@@ -22,7 +19,6 @@ const TITLES: Record<string, string> = {
 };
 
 export default function Shell({ children }: { children: ReactNode }) {
-  const meta = useApi<Meta>('/api/v1/meta');
   const { pathname } = useLocation();
   useEffect(() => {
     document.title = TITLES[pathname] ?? 'Not found · Roadalyx';
@@ -40,22 +36,18 @@ export default function Shell({ children }: { children: ReactNode }) {
           <NavLink to="/platform">Platform</NavLink>
           <a href="/api/docs">API</a>
         </nav>
-        <p className="bar-data">
-          {meta.data ? <>TxDOT CRIS · Lubbock District · to {dateLong(meta.data.coverage.end)}</> : meta.error ? 'Data unavailable' : ' '}
-        </p>
       </header>
       <main id="main" tabIndex={-1}>{children}</main>
-      <footer className="foot">
-        <div>
-          <p>Source: TxDOT CRIS query export, Lubbock District, supplied by TransTech Lab, Texas Tech University. County lines: US Census Bureau.</p>
-          <p className="muted">Reported K, A, B and C injury crashes; counts, not rates. TxDOT makes no warranty of CRIS accuracy.</p>
-        </div>
-        <ul>
-          <li><a href="/api/docs">API reference</a></li>
-          <li><a href={`${REPO}/blob/main/notebooks/eda.ipynb`}>EDA notebook</a></li>
-          <li><a href={REPO}>Source code</a></li>
-        </ul>
-      </footer>
+      {/* The overview is the 3D view alone; its scope line names the sources. */}
+      {pathname !== '/' && (
+        <footer className="foot">
+          <p>Data: TxDOT CRIS, Lubbock District. County lines: US Census Bureau.</p>
+          <ul>
+            <li><a href={`${REPO}/blob/main/notebooks/eda.ipynb`}>EDA notebook</a></li>
+            <li><a href={REPO}>Source code</a></li>
+          </ul>
+        </footer>
+      )}
     </>
   );
 }

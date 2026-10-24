@@ -41,8 +41,7 @@ main:focus { outline: none; }
 .bar nav a { padding: 7px 12px; border-radius: var(--r-m); text-decoration: none; color: var(--ink-2); font-size: var(--t-ui); transition: background-color 140ms, color 140ms; }
 .bar nav a:hover { background: var(--raise); color: var(--ink); }
 .bar nav a.active { color: var(--ink); background: var(--raise); }
-.bar-data { margin-left: auto; font-size: var(--t-label); color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 860px) { .bar-data { display: none; } .bar { gap: var(--s4); } }
+@media (max-width: 860px) { .bar { gap: var(--s4); } }
 @media (max-width: 520px) { .brand span { display: none; } .bar nav a { padding: 7px 9px; } }
 
 /* Buttons */
@@ -85,9 +84,8 @@ main:focus { outline: none; }
   border-top: 1px solid var(--rule); display: flex; gap: var(--s6); justify-content: space-between; flex-wrap: wrap;
   font-size: var(--t-label); color: var(--ink-2);
 }
-.foot > div { display: grid; gap: var(--s2); max-width: 72ch; }
-.foot svg { vertical-align: -4px; color: var(--ink); }
-.foot ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.foot p { margin: 0; }
+.foot ul { list-style: none; margin: 0; padding: 0; display: flex; gap: var(--s5); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }

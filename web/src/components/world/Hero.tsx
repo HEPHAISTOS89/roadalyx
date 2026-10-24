@@ -1,17 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowCounterClockwiseIcon, ArrowRightIcon, PauseIcon, PlayIcon, XIcon } from '@phosphor-icons/react';
+import { ArrowRightIcon, CornersInIcon, CornersOutIcon, PauseIcon, PlayIcon, XIcon } from '@phosphor-icons/react';
 import { useApi } from '../../lib/api';
-import { county, dateLong, int, pct } from '../../lib/format';
+import { county, int, pct } from '../../lib/format';
 import { slug } from '../../lib/filters';
-import type { BreakdownRes, Meta, Points } from '../../lib/types';
+import type { BreakdownRes, Points } from '../../lib/types';
 import { createWorld, type World } from './district';
 import '../../styles/hero.css';
 
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const coarse = window.matchMedia('(pointer: coarse)').matches;
 const webgl = () => {
   try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; }
 };
+
+// CRIS injury severity, worst first; the swatches match the lights on the map.
+const LEGEND = [['K', 'Fatal'], ['A', 'Serious'], ['B', 'Minor'], ['C', 'Possible']] as const;
 
 /** Number of values in a sorted array that are <= x. */
 function upTo(sorted: number[], x: number) {
@@ -33,11 +37,11 @@ function years(start: Date, last: number) {
 
 /**
  * The district at night: every located crash at its CRIS coordinates, K and A crashes as posts.
- * The first visit of a session replays 2020 to 2026; later visits open on the full picture. Drag turns it, a click on a county opens that county's figures and a
- * link to the Explorer, the timeline replays 2020 to 2026. Everything here is also in the Explorer,
- * which works without WebGL.
+ * The timeline loops 2020 to 2026 while the camera orbits; the pause button stops both. Drag turns
+ * it, the wheel zooms, a click on a county opens that county's figures and a link to the Explorer.
+ * Everything here is also in the Explorer, which works without WebGL.
  */
-export default function Hero({ meta }: { meta: Meta | null }) {
+export default function Hero() {
   const pts = useApi<Points>('/api/v1/points');
   const byCounty = useApi<BreakdownRes>('/api/v1/breakdown?by=county');
   const host = useRef<HTMLDivElement>(null);
@@ -53,18 +57,18 @@ export default function Hero({ meta }: { meta: Meta | null }) {
   const [tip, setTip] = useState<{ name: string; x: number; y: number } | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
+  const [full, setFull] = useState(false);
 
   const days = useMemo(() => {
     if (!pts.data) return null;
-    const all: number[] = [], K: number[] = [], A: number[] = [];
+    const all: number[] = [];
+    const by: Record<string, number[]> = { K: [], A: [], B: [], C: [] };
     pts.data.day.forEach((d, i) => {
       all.push(d);
-      const s = pts.data!.severity[i];
-      if (s === 'K') K.push(d);
-      if (s === 'A') A.push(d);
+      by[pts.data!.severity[i]]?.push(d);
     });
-    for (const a of [all, K, A]) a.sort((x, y) => x - y);
-    return { all, K, A, last: all[all.length - 1] ?? 0, start: new Date(`${pts.data.start}T12:00:00`) };
+    for (const a of [all, ...Object.values(by)]) a.sort((x, y) => x - y);
+    return { all, by, last: all[all.length - 1] ?? 0, start: new Date(`${pts.data.start}T12:00:00`) };
   }, [pts.data]);
 
   useEffect(() => {
@@ -86,10 +90,7 @@ export default function Hero({ meta }: { meta: Meta | null }) {
       return;
     }
     world.current = w;
-    // The timeline plays by itself once per browser session; after that it replays on demand.
-    let seen = true;
-    try { seen = sessionStorage.getItem('roadalyx-intro') === '1'; sessionStorage.setItem('roadalyx-intro', '1'); } catch { /* storage blocked: treat as seen */ }
-    if (!still && !seen) { w.play(); setPlaying(true); }
+    if (!still) { w.play(); setPlaying(true); }
     let inView = true;
     const sync = () => w.setActive(inView && !document.hidden);
     const io = new IntersectionObserver(([e]) => { inView = e.isIntersecting; sync(); });
@@ -115,13 +116,7 @@ export default function Hero({ meta }: { meta: Meta | null }) {
     return () => document.removeEventListener('keydown', key);
   }, [picked]);
 
-  // Keep the play button honest when playback reaches the last crash on its own.
-  useEffect(() => {
-    if (playing && days && day != null && day >= days.last) setPlaying(false);
-  }, [day, days, playing]);
-
   const shownDay = Math.min(day ?? days?.last ?? 0, days?.last ?? 0);
-  const atEnd = !!days && shownDay >= days.last;
   const date = days ? new Date(days.start.getTime() + shownDay * 864e5) : null;
   const toggle = () => {
     const w = world.current;
@@ -134,6 +129,17 @@ export default function Hero({ meta }: { meta: Meta | null }) {
     setPlaying(false);
     world.current?.setDay(d);
     setDay(d);
+  };
+  // Fullscreen on the whole view, controls included; the button is hidden where the API is missing (iPhone).
+  useEffect(() => {
+    const sync = () => setFull(document.fullscreenElement === section.current);
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, []);
+  const canFull = typeof document !== 'undefined' && document.fullscreenEnabled;
+  const toggleFull = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void section.current?.requestFullscreen().catch(() => {});
   };
   const go = (v: 'district' | 'lubbock') => { setPicked(null); setView(v); world.current?.view(v); };
   const stat = (name: string | null) => (name ? byCounty.data?.groups.find((g) => g.value === name) : undefined);
@@ -161,15 +167,11 @@ export default function Hero({ meta }: { meta: Meta | null }) {
               : 'WebGL 2 is unavailable, so the 3D map is off. The Explorer has the same figures and a 2D map.'}
           </p>
         )}
-        {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">Drag to rotate · click a county</p>}
+        {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">{coarse ? 'Drag to rotate · tap a county' : 'Drag to rotate · scroll to zoom · click a county'}</p>}
       </div>
 
       <div className="hero-copy">
-        <h1 id="hero-h">Injury crashes in the TxDOT Lubbock District, 2020–2026</h1>
-        <p className="hero-scope">
-          {pts.data ? int(pts.data.total) : '…'} crashes (K, A, B, C) · {meta ? meta.filters.county.length : '…'} counties ·{' '}
-          {meta ? `${dateLong(meta.coverage.start)} – ${dateLong(meta.coverage.end)}` : '…'} · TxDOT CRIS
-        </p>
+        <h1 id="hero-h" className="sr-only">Injury crashes in the TxDOT Lubbock District, 2020 to 2026</h1>
         <div className="actions">
           <Link className="btn primary" to="/explorer">Open the Explorer</Link>
           <Link className="btn" to="/platform">How it is built</Link>
@@ -181,6 +183,12 @@ export default function Hero({ meta }: { meta: Meta | null }) {
           <button type="button" aria-pressed={view === 'district'} onClick={() => go('district')} disabled={broken}>District</button>
           <button type="button" aria-pressed={view === 'lubbock'} onClick={() => go('lubbock')} disabled={broken}>Lubbock</button>
         </div>
+        {canFull && (
+          <button type="button" className="icon-btn hero-full" onClick={toggleFull} aria-pressed={full}
+            aria-label={full ? 'Exit full screen' : 'Full screen'} title={full ? 'Exit full screen' : 'Full screen'}>
+            {full ? <CornersInIcon weight="bold" /> : <CornersOutIcon weight="bold" />}
+          </button>
+        )}
         {picked && (
           <section className="hero-county" aria-labelledby="county-h">
             <div className="hero-county-head">
@@ -202,8 +210,8 @@ export default function Hero({ meta }: { meta: Meta | null }) {
 
       <div className="hero-hud">
         <button type="button" className="icon-btn" onClick={toggle} disabled={broken || !days}
-          aria-label={playing ? 'Pause the timeline' : atEnd ? 'Replay 2020 to 2026' : 'Play the timeline'}>
-          {playing ? <PauseIcon weight="fill" /> : atEnd ? <ArrowCounterClockwiseIcon weight="bold" /> : <PlayIcon weight="fill" />}
+          aria-label={playing ? 'Pause the animation' : 'Play the animation'}>
+          {playing ? <PauseIcon weight="fill" /> : <PlayIcon weight="fill" />}
         </button>
         <label className="hud-track">
           <span className="sr-only">Show crashes up to this date</span>
@@ -216,13 +224,19 @@ export default function Hero({ meta }: { meta: Meta | null }) {
             onChange={(e) => scrub(Number(e.target.value))} disabled={broken || !days}
             aria-valuetext={date?.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} />
         </label>
-        <p className="hud-date num">{date ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : ' '}</p>
-        <dl className="hud-counts">
-          <div title={pts.data ? `${int(pts.data.total - pts.data.located)} crashes have no coordinates: counted in all figures, not drawn.` : undefined}>
-            <dt>On the map</dt><dd className="num">{days ? int(upTo(days.all, shownDay)) : '–'}</dd>
-          </div>
-          <div><dt><i className="sw k" />Fatal (K)</dt><dd className="num">{days ? int(upTo(days.K, shownDay)) : '–'}</dd></div>
-          <div><dt><i className="sw a" />Suspected serious (A)</dt><dd className="num">{days ? int(upTo(days.A, shownDay)) : '–'}</dd></div>
+        <div className="hud-when">
+          <p className="hud-date num">{date ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '\u00a0'}</p>
+          <p className="hud-sub" title={pts.data ? `${int(pts.data.total - pts.data.located)} crashes have no coordinates: counted in all figures, not drawn.` : undefined}>
+            <span className="num">{days ? int(upTo(days.all, shownDay)) : '–'}</span> located · TxDOT CRIS
+          </p>
+        </div>
+        <dl className="hud-legend" aria-label="Crashes on the map by severity">
+          {LEGEND.map(([code, label]) => (
+            <div key={code} className={`sev-${code.toLowerCase()}`}>
+              <dt><i aria-hidden="true" /><b>{code}</b> {label}</dt>
+              <dd className="num">{days ? int(upTo(days.by[code], shownDay)) : '–'}</dd>
+            </div>
+          ))}
         </dl>
       </div>
     </section>

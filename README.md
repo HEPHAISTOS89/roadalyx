@@ -276,12 +276,13 @@ and passes the dataset's ETag to the stack so new Lambda instances load the new 
 
 One frontend, served by the same Lambda function, so the browser talks to a single origin.
 
-- **Overview:** the district at night in three.js. Each light is a crash at its CRIS coordinates; apart from
-  the county lines nothing else is drawn, so the road network you see is the crashes themselves. Fatal and
-  serious crashes stand as red and orange posts. Drag turns the view; clicking a county moves the camera to it
-  and opens its figures with a link to the Explorer filtered on that county. The 2020–2026 timeline replays
-  once per session and on demand. Below, four findings are recomputed from the API on each visit (for
-  example, rural crashes are about five times as likely as urban ones to be fatal or serious).
+- **Overview:** the district at night in three.js, full screen. Each light is a crash at its CRIS coordinates;
+  apart from the county lines nothing else is drawn, so the road network you see is the crashes themselves.
+  Fatal and serious crashes stand as red and orange posts, and each fatal crash sends a ring across the ground
+  when the timeline reaches it. The 2020–2026 timeline loops while the camera orbits; one button pauses all
+  motion, and with reduced motion the scene stays still. Drag turns the view, the wheel zooms, clicking a county
+  opens its figures with a link to the Explorer filtered on it. The legend under the map counts the K, A, B and
+  C crashes shown at the current date.
 - **Explorer:** every filter of the API, kept in the URL so any view can be shared. Key figures, a MapLibre
   map where a click opens the crash record, severity, factors (count next to the share that is K or A),
   trends by year, month, hour or weekday, a day-by-hour grid, a sortable breakdown table, the paginated

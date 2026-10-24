@@ -1,5 +1,5 @@
 .hero {
-  position: relative; height: clamp(600px, calc(100svh - var(--bar-h)), 980px); min-height: 560px;
+  position: relative; height: calc(100svh - var(--bar-h)); min-height: 540px;
   overflow: hidden; isolation: isolate; background: #0b0c0b;
 }
 .hero-stage { position: absolute; inset: 0; }
@@ -28,9 +28,7 @@
   display: grid; gap: var(--s4); pointer-events: none;
 }
 .hero-copy > * { pointer-events: auto; }
-.hero-copy h1 { font-size: clamp(2rem, 1.2rem + 2.4vw, 3.4rem); line-height: 1.02; letter-spacing: -0.035em; font-weight: 580; text-shadow: 0 2px 24px #0b0c0b; }
-.hero-copy .lede { text-shadow: 0 1px 12px #0b0c0b; }
-.actions { display: flex; gap: var(--s3); flex-wrap: wrap; margin-top: var(--s2); }
+.actions { display: flex; gap: var(--s3); flex-wrap: wrap; }
 
 .hero-views {
   display: inline-flex; padding: 3px; border-radius: var(--r-pill); background: rgba(18, 20, 18, 0.85); border: 1px solid var(--rule-2);
@@ -41,7 +39,7 @@
 
 .hero-hud {
   position: absolute; z-index: 2; left: var(--gutter); right: var(--gutter); bottom: 28px;
-  display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: var(--s4);
+  display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: var(--s5);
   padding: 10px 14px 10px 10px; border-radius: var(--r-l); background: rgba(14, 15, 14, 0.82);
   border: 1px solid var(--rule); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
@@ -49,15 +47,23 @@
 .hud-track input { width: 100%; margin: 0; accent-color: var(--accent); }
 .hud-years { position: absolute; left: 8px; right: 8px; bottom: -2px; height: 14px; pointer-events: none; }
 .hud-years i { position: absolute; transform: translateX(-50%); font-style: normal; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.hud-date { min-width: 76px; font-size: var(--t-ui); color: var(--ink); }
-.hud-counts { display: flex; gap: var(--s5); margin: 0; }
-.hud-counts div { display: grid; gap: 0; }
-.hud-counts dt { font-size: var(--t-micro); color: var(--ink-3); white-space: nowrap; }
-.hud-counts dd { margin: 0; font-size: 1.125rem; font-weight: 560; color: var(--ink); }
+.hud-when { display: grid; gap: 2px; min-width: 112px; }
+.hud-date { margin: 0; font-size: 1.125rem; font-weight: 560; color: var(--ink); }
+.hud-sub { margin: 0; font-size: var(--t-micro); color: var(--ink-3); white-space: nowrap; }
+.hud-sub .num { color: var(--ink-2); }
 
-@media (max-width: 860px) {
+/* The legend is the counter: each swatch glows like its lights on the map. */
+.hud-legend { display: flex; gap: var(--s5); margin: 0; padding-left: var(--s5); border-left: 1px solid var(--rule); }
+.hud-legend div { display: grid; gap: 2px; --c: var(--sev-c); }
+.hud-legend .sev-k { --c: var(--sev-k); } .hud-legend .sev-a { --c: var(--sev-a); } .hud-legend .sev-b { --c: var(--sev-b); }
+.hud-legend dt { display: flex; align-items: center; gap: 6px; font-size: var(--t-micro); color: var(--ink-3); white-space: nowrap; }
+.hud-legend dt i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px 1px color-mix(in srgb, var(--c) 70%, transparent); }
+.hud-legend dt b { color: var(--ink-2); font-weight: 600; }
+.hud-legend dd { margin: 0; font-size: 1.125rem; font-weight: 560; color: var(--ink); min-width: 5ch; }
+
+@media (max-width: 1060px) {
   .hero-hud { grid-template-columns: auto 1fr auto; }
-  .hud-counts { grid-column: 1 / -1; justify-content: space-between; }
+  .hud-legend { grid-column: 1 / -1; justify-content: space-between; padding-left: 0; border-left: 0; }
 }
 @media (max-width: 520px) {
   .hero { height: auto; min-height: 0; display: flex; flex-direction: column; }
@@ -68,8 +74,13 @@
 }
 @media (max-width: 700px) { .hud-years i:nth-child(even) { display: none; } }
 
-.hero-scope { font-size: var(--t-ui); color: var(--ink-2); text-shadow: 0 1px 10px #0b0c0b; font-variant-numeric: tabular-nums; }
-.hero-side { position: absolute; z-index: 3; right: var(--gutter); top: clamp(28px, 6vh, 72px); display: grid; gap: var(--s3); justify-items: end; width: min(300px, calc(100% - 2 * var(--gutter))); }
+.hero-side {
+  position: absolute; z-index: 3; right: var(--gutter); top: clamp(28px, 6vh, 72px); width: min(300px, calc(100% - 2 * var(--gutter)));
+  display: grid; grid-template-columns: 1fr auto; gap: var(--s3); justify-items: end; align-items: center;
+}
+.hero-side .hero-county { grid-column: 1 / -1; }
+.hero-full { background: rgba(18, 20, 18, 0.85); border: 1px solid var(--rule-2); }
+.hero:fullscreen { height: 100%; }
 .hero-side .hero-views { position: static; }
 .hero-county {
   width: 100%; display: grid; gap: var(--s3); padding: var(--s4); border-radius: var(--r-l);
@@ -91,4 +102,8 @@
 @media (max-width: 520px) {
   .hero-side { position: relative; right: auto; top: auto; width: auto; margin: var(--s3) var(--gutter) 0; order: 3; justify-items: start; }
   .hero-hint { bottom: 12px; }
+}
+@media (max-width: 520px) {
+  .hud-years i { display: none; }
+  .hud-years i:first-child, .hud-years i:last-child { display: block; }
 }
