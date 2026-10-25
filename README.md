@@ -12,13 +12,6 @@
   <a href="notebooks/eda.ipynb">EDA notebook</a>
 </p>
 <p align="center">
-  <img alt="Python 3.13" src="https://img.shields.io/badge/python-3.13-3b5b3a">
-  <img alt="FastAPI" src="https://img.shields.io/badge/API-FastAPI-3b5b3a">
-  <img alt="AWS Lambda, Free Tier" src="https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20Free%20Tier-3b5b3a">
-  <img alt="Tests: 91 Python, 10 frontend" src="https://img.shields.io/badge/tests-91%20%2B%2010%20passing-3b5b3a">
-</p>
-
-<p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer">
     <img src="docs/assets/analysis.jpg" width="880" alt="The Analysis page: filters for county, severity and years; totals of 24,261 injury crashes, 624 fatal and 1,546 suspected serious; a crash map of the 17 counties; severity bars and the ranked contributing factors.">
   </a>
@@ -34,7 +27,7 @@ I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The
 4. [The API](#the-api)
 5. [Deployment on AWS](#deployment-on-aws)
 6. [Scope decisions](#scope-decisions)
-7. [Limitations and next steps](#limitations-and-next-steps)
+7. [Limitations and what I would do next](#limitations-and-what-i-would-do-next)
 8. [The frontend](#the-frontend)
 
 ## The assessment, part by part
@@ -275,23 +268,17 @@ scripts/deploy.sh data               # after processing a new export: upload the
 
 ## Scope decisions
 
-The assessment is meant to take a few hours, so I spent the effort where a wrong answer would hurt most:
+With a few hours for the task, I put the time where a mistake would change the answer: counting crashes instead of people, splitting the factor lists correctly, and flagging the partial year. The notebook and the tests check each of these against the totals in the export's header.
 
-1. **Correct numbers first.** Counting crashes rather than people, the factor separators and the partial year change the required results. I check each against the export's own totals, in the notebook and in the tests.
-2. **A small API that answers analyst questions.** Ten endpoints sharing one set of filters, rather than one endpoint per chart.
-3. **The simplest deployment that fits the data**: one function and one private file, rather than a server or a database.
-4. **One frontend**, built only on the public API, rather than several smaller extras.
+Everything else stays small: one set of filters shared by every endpoint, one Lambda function reading one file, and one frontend built on the same API. I did not add user accounts, a database or rate limiting; a read-only dataset of 24,261 crashes does not need them yet.
 
-I left out on purpose: user accounts (the data is public), a database (not needed at this size), automated processing of new exports, and rate limiting (see below).
+## Limitations and what I would do next
 
-## Limitations and next steps
-
-- **Injury crashes only.** The export has no property-damage-only (O) crashes, so totals are not all-crash statistics.
-- **Counts, not rates.** Without traffic volumes (AADT) or vehicle-miles travelled, I can compare numbers of crashes and the share that are fatal or serious, but not say which road is more dangerous. Joining TxDOT's roadway inventory would allow crash rates per segment.
-- **Recent months are provisional.** The data ends on 20 October 2026, and CRIS reports keep arriving after a crash.
-- **No rate limiting.** The public URL is limited only by the account's Lambda concurrency. Next step: API Gateway with a usage plan, or CloudFront with AWS WAF.
-- **Processing runs on a laptop.** Next step: a Lambda triggered when a new export lands in S3, so publishing needs no manual step.
-- **Factor labels are not merged.** CRIS has near-duplicates such as *Under influence - alcohol* and *Intoxicated - alcohol*; merging them is an analyst's decision, so I leave them separate and visible.
+- The export only has injury crashes (K, A, B, C), so the totals are not all crashes.
+- Without traffic volumes, I can say where crashes happen and how severe they are, but not which road is the most dangerous. With TxDOT's traffic counts (AADT), I would compute crash rates per road segment.
+- The last months may still grow: the data ends on 20 October 2026 and crash reports keep arriving.
+- Anyone can call the public URL as often as they like. Before sharing it widely, I would put API Gateway with a usage limit in front of it.
+- A new export is processed on my laptop. Next, I would have S3 start the processing when a file is uploaded.
 
 ## The frontend
 
