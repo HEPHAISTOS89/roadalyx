@@ -24,6 +24,7 @@ from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.gzip import GZipMiddleware
@@ -80,6 +81,22 @@ def data() -> Dataset:
     return dataset
 
 
+_OS = (("Windows", "Windows"), ("iPhone", "iOS"), ("iPad", "iOS"), ("Android", "Android"),
+       ("Mac OS X", "macOS"), ("CrOS", "ChromeOS"), ("Linux", "Linux"))
+_BROWSERS = (("Edg/", "Edge"), ("OPR/", "Opera"), ("Firefox/", "Firefox"), ("Chrome/", "Chrome"),
+             ("CriOS/", "Chrome"), ("Safari/", "Safari"))
+_BOTS = ("bot", "crawl", "spider", "curl", "python", "wget", "headless", "go-http")
+
+
+def client_of(user_agent: str) -> dict:
+    """Operating system and browser family from the User-Agent; no IP or full string is kept."""
+    if any(b in user_agent.lower() for b in _BOTS):
+        return {"os": "bot", "browser": "bot"}
+    os_name = next((name for key, name in _OS if key in user_agent), "other")
+    browser = next((name for key, name in _BROWSERS if key in user_agent), "other")
+    return {"os": os_name, "browser": browser}
+
+
 @app.middleware("http")
 async def headers_and_access_log(request: Request, call_next):
     started = time.perf_counter()
@@ -93,8 +110,11 @@ async def headers_and_access_log(request: Request, call_next):
     elif path.startswith("/api/"):
         response.headers.setdefault("Cache-Control", "no-store")  # errors and liveness are never cached
     # One JSON line per request; CloudWatch Logs Insights can query these fields directly.
+    # The referrer keeps only its host (where the visitor came from), never the full URL.
+    referrer = urlsplit(request.headers.get("referer", "")).hostname
     print(json.dumps({"method": request.method, "path": request.url.path, "status": response.status_code,
-                      "ms": round((time.perf_counter() - started) * 1000, 1)}))
+                      "ms": round((time.perf_counter() - started) * 1000, 1),
+                      **client_of(request.headers.get("user-agent", "")), "from": referrer}))
     return response
 
 

@@ -196,3 +196,13 @@ def test_street_and_location_filters():
     assert sum(parts) <= get("/api/v1/severity")["total"]
     assert client.get("/api/v1/severity", params={"street": "nowhere-rd"}).status_code == 422
     assert client.get("/api/v1/severity", params={"location": "roundabout"}).status_code == 422
+
+
+def test_client_of_keeps_only_os_and_browser_family():
+    from roadalyx.api import client_of
+    win = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36 Edg/130.0"
+    mac = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
+    assert client_of(win) == {"os": "Windows", "browser": "Edge"}
+    assert client_of(mac) == {"os": "macOS", "browser": "Safari"}
+    assert client_of("curl/8.4")["os"] == "bot"
+    assert client_of("") == {"os": "other", "browser": "other"}
