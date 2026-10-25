@@ -16,7 +16,7 @@
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.162-009688?style=flat-square&logo=fastapi&logoColor=white"></a>
   <a href="#deployment-on-aws"><img alt="AWS Lambda, Free Tier" src="https://img.shields.io/badge/AWS_Lambda-Free_Tier-FF9900?style=flat-square"></a>
   <a href="web/"><img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black"></a>
-  <a href="tests/"><img alt="Tests: 93 Python and 13 frontend, passing" src="https://img.shields.io/badge/tests-93_%2B_13_passing-2EA44F?style=flat-square"></a>
+  <a href="tests/"><img alt="Tests: 95 Python and 25 frontend, passing" src="https://img.shields.io/badge/tests-95_%2B_25_passing-2EA44F?style=flat-square"></a>
 </p>
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis">
@@ -89,7 +89,7 @@ Wrote 24,261 crash records to data/processed/crashes.json.gz (0.9 MB)
 **2. Run the tests.**
 
 ```bash
-python -m pytest                   # 93 tests, a few seconds
+python -m pytest                   # 95 tests, a few seconds
 ```
 
 **3. Start the API**, then open <http://127.0.0.1:8000/api/docs> to try every endpoint in the browser. Stop it with Ctrl+C.
@@ -116,7 +116,7 @@ The raw CSV and the processed file are not committed: the CSV is the lab's file 
 ```bash
 npm --prefix web ci
 npm --prefix web run build         # writes roadalyx/web, served by the API at /
-npm --prefix web test              # 13 tests
+npm --prefix web test              # 25 tests
 ```
 
 To change the frontend with live reload, keep the API running and start `npm --prefix web run dev` in a second terminal, then open <http://localhost:5173>.
@@ -346,8 +346,8 @@ I use one filter implementation for the aggregate and search endpoints, one Lamb
 
 A React frontend in [`web/`](web/), served by the same Lambda function and built only on the public API. It has two pages:
 
-- **[Analysis](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis)**, for working with the data. Filters (county, severity, years, road class, factor, road users) update everything at once and are kept in the URL, so a view can be shared. It shows the key figures, a map of every located crash, severity and factor charts, trends on four time axes, a day-by-hour grid, a breakdown table, the crash records, and a CSV download of the current selection.
-- **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/district-map)**, a 3D view of the 17 counties where the crashes build up month by month from 2020 to 2026. Clicking a county opens its figures and a link to the Analysis page.
+- **[Analysis](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis)**, for working with the data. Filters (county, severity, years, road class, factor, road users) update everything at once and are kept in the URL, so a view can be shared. It shows the key figures, a map of every located crash, severity and factor charts, trends on four time axes, a day-by-hour grid, a breakdown table, the crash records, and a CSV download of the current selection. On the map, a Location filter splits intersection, segment and driveway crashes, and a Top corridors list ranks streets by crashes: clicking one filters the whole page to that street. A Hotspots view shows crash density, and a 3D view tilts the map over the buildings.
+- **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/district-map)**, a 3D view of the 17 counties, with their roads and towns from Census TIGER/Line, where the crashes build up month by month from 2020 to 2026. Clicking a county opens its figures and a link to the Analysis page.
 
 <p align="center">
   <img src="docs/assets/district-map.jpg" width="880" alt="The District map: the 17 counties in 3D, with every located crash drawn as a light and fatal and serious crashes as red and orange posts, a timeline from 2020 to 2026, and counts of K, A, B and C crashes.">
@@ -370,6 +370,7 @@ notebooks/eda.ipynb  exploratory analysis and cleaning decisions
 tests/               pytest suite and a small synthetic CRIS file
 infra/template.yaml  CloudFormation template
 scripts/deploy.sh    test, build and deploy
+scripts/build_roads.py  roads, water and towns for the District map (Census TIGER/Line)
 web/                 React frontend (Vite, MapLibre, three.js)
 data/raw/            put district_crashes.csv here (not committed)
 ```
