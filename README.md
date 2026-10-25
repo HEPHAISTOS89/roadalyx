@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" width="110" height="110" alt="Roadalyx">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner-dark.svg">
+    <img src="docs/assets/banner-light.svg" width="176" height="98" alt="Roadalyx">
+  </picture>
 </p>
 
 <p align="center">
