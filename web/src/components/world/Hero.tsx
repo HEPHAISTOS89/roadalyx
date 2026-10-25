@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRightIcon, CornersInIcon, CornersOutIcon, PauseIcon, PlayIcon, XIcon } from '@phosphor-icons/react';
 import { useApi } from '../../lib/api';
@@ -7,12 +7,11 @@ import { slug } from '../../lib/filters';
 import type { BreakdownRes, Points } from '../../lib/types';
 import { createWorld, type World } from './district';
 import '../../styles/hero.css';
+import CanvasMap from '../maps/CanvasMap';
+import { supportsWebGL2 } from '../../lib/map2d';
 
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const coarse = window.matchMedia('(pointer: coarse)').matches;
-const webgl = () => {
-  try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; }
-};
 
 // CRIS injury severity, worst first; the swatches match the lights on the map.
 const LEGEND = [['K', 'Fatal'], ['A', 'Serious'], ['B', 'Minor'], ['C', 'Possible']] as const;
@@ -39,7 +38,7 @@ function years(start: Date, last: number) {
  * The district at night: every located crash at its CRIS coordinates, K and A crashes as posts.
  * The timeline loops 2020 to 2026 while the camera orbits; the pause button stops both. Drag turns
  * it, the wheel zooms, a click on a county opens that county's figures and a link to the Analysis page.
- * Everything here is also on the Analysis page, which works without WebGL.
+ * If WebGL is unavailable, a Canvas 2D map keeps the county selection and timeline usable.
  */
 export default function Hero() {
   const pts = useApi<Points>('/api/v1/points');
@@ -56,7 +55,7 @@ export default function Hero() {
     media.addEventListener('change', sync);
     return () => media.removeEventListener('change', sync);
   }, []);
-  const [gl] = useState(webgl);
+  const [gl] = useState(supportsWebGL2);
   const [failed, setFailed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [day, setDay] = useState<number | null>(null);
@@ -65,6 +64,8 @@ export default function Hero() {
   const [picked, setPicked] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
   const [full, setFull] = useState(false);
+
+  const pickCounty = useCallback((name: string | null) => { setTouched(true); setPicked(name); }, []);
 
   const days = useMemo(() => {
     if (!pts.data) return null;
@@ -79,7 +80,7 @@ export default function Hero() {
   }, [pts.data]);
 
   useEffect(() => {
-    if (!pts.data || !gl || !host.current || !labels.current) return;
+    if (!pts.data || !gl || failed || !host.current || !labels.current) return;
     let w: World;
     let lastPush = 0;
     try {
@@ -96,6 +97,9 @@ export default function Hero() {
       setFailed(true);
       return;
     }
+    const glCanvas = host.current.querySelector('canvas');
+    const lost = (e: Event) => { e.preventDefault(); setPlaying(false); setFailed(true); };
+    glCanvas?.addEventListener('webglcontextlost', lost);
     world.current = w;
     if (!still) w.play();
     setPlaying(!still);
@@ -107,10 +111,22 @@ export default function Hero() {
     return () => {
       io.disconnect();
       document.removeEventListener('visibilitychange', sync);
+      glCanvas?.removeEventListener('webglcontextlost', lost);
       w.dispose();
       world.current = null;
     };
-  }, [pts.data, gl, still]);
+  }, [pts.data, gl, still, failed]);
+
+  const fallback = !gl || failed;
+  // The software map uses the same day cut-off as the HUD, with no camera animation.
+  useEffect(() => {
+    if (!fallback || !playing || !days) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) setDay((d) => (d ?? days.last) >= days.last ? 0 : Math.min(days.last, (d ?? 0) + 12));
+    }, 100);
+    return () => window.clearInterval(timer);
+  }, [fallback, playing, days, still]);
+  useEffect(() => { if (still && fallback) setPlaying(false); }, [still, fallback]);
 
   // Keep county figures discoverable when the controls sit below the map on mobile.
   useEffect(() => {
@@ -132,6 +148,12 @@ export default function Hero() {
   const date = days ? new Date(days.start.getTime() + shownDay * 864e5) : null;
   const toggle = () => {
     const w = world.current;
+    if (fallback) {
+      setTouched(true);
+      if (shownDay >= (days?.last ?? 0)) setDay(0);
+      setPlaying(!playing);
+      return;
+    }
     if (!w) return;
     setTouched(true);
     if (playing) { w.pause(); setPlaying(false); } else { w.play(); setPlaying(true); }
@@ -157,15 +179,17 @@ export default function Hero() {
   const stat = (name: string | null) => (name ? byCounty.data?.groups.find((g) => g.value === name) : undefined);
   const hover = tip ? stat(tip.name) : undefined;
   const sel = stat(picked);
-  const broken = !gl || failed || !!pts.error;
+  const broken = !!pts.error;
 
   return (
     <section ref={section} className="hero" aria-labelledby="hero-h">
       <div ref={host} className="hero-stage" data-state={broken ? 'broken' : pts.data ? 'ready' : 'loading'}
-        role="img" aria-label={pts.data
-          ? `Map of the 17 counties of the TxDOT Lubbock District with ${int(pts.data.located)} injury crashes drawn at their reported locations. Fatal and serious-injury crashes stand as red and orange posts.`
+        role="region" aria-label={pts.data
+          ? `Map of the 17 counties of the TxDOT Lubbock District with ${int(pts.data.located)} injury crashes drawn at their reported locations. Colours show crash severity.`
           : 'Map of the Lubbock District, loading'}
         onPointerDown={() => setTouched(true)}>
+        {fallback && pts.data && <CanvasMap points={pts.data} county={picked} view={view} maxDay={shownDay}
+          onCounty={pickCounty} />}
         <div ref={labels} className="hero-labels" aria-hidden="true" />
         {tip && tip.name !== picked && (
           <div className="hero-tip" style={{ transform: `translate(${tip.x + 14}px, ${tip.y + 14}px)` }} aria-hidden="true">
@@ -175,11 +199,10 @@ export default function Hero() {
         )}
         {broken && (
           <p className="hero-fallback">
-            {pts.error ? 'The crash data could not be loaded. Reload the page to try again.'
-              : 'WebGL 2 is unavailable, so the 3D map is off. The Analysis page has the same figures and a 2D map.'}
+            The crash data could not be loaded. Reload the page to try again.
           </p>
         )}
-        {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">{coarse ? 'Drag to rotate · tap a county' : 'Drag to rotate · scroll to zoom · click a county'}</p>}
+        {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">{fallback ? 'Drag to pan · select a county' : coarse ? 'Drag to rotate · tap a county' : 'Drag to rotate · scroll to zoom · click a county'}</p>}
       </div>
 
       <div className="hero-copy">

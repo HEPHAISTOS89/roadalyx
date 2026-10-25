@@ -5,6 +5,8 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { FeatureCollection } from 'geojson';
 import counties from '../../data/counties.json';
+import CanvasMap from '../maps/CanvasMap';
+import { supportsWebGL2 } from '../../lib/map2d';
 import type { Points } from '../../lib/types';
 
 const DISTRICT: [[number, number], [number, number]] = [[-103.07, 32.52], [-101.04, 34.75]];
@@ -49,14 +51,20 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<MlMap | null>(null);
   const [ready, setReady] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState(() => !supportsWebGL2());
   const select = useRef(onSelect);
   select.current = onSelect;
 
   useEffect(() => {
+    if (failed) return;
     let m: MlMap | null = null;
     let ro: ResizeObserver | null = null;
     let live = true;
+    let loaded = false;
+    const fail = () => { if (live) setFailed(true); };
+    // A stalled basemap must not leave an empty panel indefinitely.
+    const deadline = window.setTimeout(() => { if (!loaded) fail(); }, 15000);
+    const lost = (event: Event) => { event.preventDefault(); fail(); };
     const escape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !document.querySelector('dialog[open]')) {
         el.current?.querySelector<HTMLButtonElement>('.maplibregl-ctrl-shrink')?.click();
@@ -69,10 +77,14 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
         container: el.current, style: s, bounds: DISTRICT, fitBoundsOptions: { padding: 24 },
         attributionControl: { compact: true }, cooperativeGestures: false, maxPitch: 0, dragRotate: false,
       });
+      m.getCanvas().addEventListener('webglcontextlost', lost);
+      m.on('error', () => { if (!loaded) fail(); });
       m.addControl(new NavigationControl({ showCompass: false }), 'top-right');
       // Expand inside the portal, including browsers that block native fullscreen.
       m.addControl(new FullscreenControl({ pseudo: true }), 'top-right');
       m.on('load', () => {
+        if (!live) return;
+        try {
         m!.addSource('counties', { type: 'geojson', data: counties as FeatureCollection });
         m!.addLayer({ id: 'county-line', type: 'line', source: 'counties', paint: { 'line-color': '#4a524a', 'line-width': 1 } });
         // The state highway network under the crashes, so a cluster can be read as "on US 84" or "on I-27".
@@ -124,7 +136,10 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
         m!.on('mouseenter', 'crash', () => { m!.getCanvas().style.cursor = 'pointer'; });
         m!.on('mouseleave', 'crash', () => { m!.getCanvas().style.cursor = ''; });
         map.current = m;
+        loaded = true;
+        window.clearTimeout(deadline);
         setReady(true);
+        } catch { fail(); }
       });
       // The panel can change size after the map is created (layout, sidebar wrap): keep the canvas matched.
       ro = new ResizeObserver(() => m?.resize());
@@ -132,10 +147,12 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
     }).catch(() => live && setFailed(true));
     return () => {
       live = false;
+      window.clearTimeout(deadline);
+      m?.getCanvas().removeEventListener('webglcontextlost', lost);
       document.removeEventListener('keydown', escape);
       ro?.disconnect(); m?.remove(); map.current = null;
     };
-  }, []);
+  }, [failed]);
 
   useEffect(() => {
     if (!ready || !map.current) return;
@@ -165,9 +182,10 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
     if (i >= 0) m.easeTo({ center: [points.lon[i], points.lat[i]], zoom: Math.max(m.getZoom(), 12), duration: reduced() ? 0 : 600 });
   }, [ready, selected, points]);
 
+  if (failed) return <CanvasMap points={points} selected={selected} onSelect={onSelect} />;
+
   return (
     <div className="map" ref={el} role="region" aria-label="Crash map. Click a crash mark to open its record; the records table below lists the same crashes.">
-      {failed && <p className="map-msg">The map could not be drawn (WebGL unavailable or the basemap unreachable). Every chart and table on this page still works.</p>}
       <ul className="map-legend" aria-label="Map legend">
         <li><i className="sw k" />K fatal</li><li><i className="sw a" />A suspected serious</li><li><i className="sw b" />B suspected minor</li><li><i className="sw c" />C possible</li>
         <li><i className="sw-route" aria-hidden="true" />Interstate, US and state highways</li>
