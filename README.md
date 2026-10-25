@@ -16,7 +16,7 @@
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.162-009688?style=flat-square&logo=fastapi&logoColor=white"></a>
   <a href="#deployment-on-aws"><img alt="AWS Lambda, Free Tier" src="https://img.shields.io/badge/AWS_Lambda-Free_Tier-FF9900?style=flat-square"></a>
   <a href="web/"><img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black"></a>
-  <a href="tests/"><img alt="Tests: 91 Python and 10 frontend, passing" src="https://img.shields.io/badge/tests-91_%2B_10_passing-2EA44F?style=flat-square"></a>
+  <a href="tests/"><img alt="Tests: 91 Python and 13 frontend, passing" src="https://img.shields.io/badge/tests-91_%2B_13_passing-2EA44F?style=flat-square"></a>
 </p>
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer">
