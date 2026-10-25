@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" width="880" alt="Roadalyx — TxDOT CRIS crashes for the Lubbock District, cleaned in Python, served on AWS, explored on a map. 67,906 people · 24,261 injury crashes · 17 counties · 1 clean API on AWS.">
+  <img src="docs/assets/banner.svg" width="110" height="110" alt="Roadalyx">
 </p>
 
 <p align="center">
