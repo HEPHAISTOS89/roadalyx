@@ -97,6 +97,7 @@
 .map-wrap { position: relative; min-height: 560px; border-radius: var(--r-m); overflow: hidden; border: 1px solid var(--rule); }
 .map { position: absolute; inset: 0; }
 .map-msg { position: absolute; z-index: 2; inset: auto 12px 12px 12px; padding: 10px 12px; background: var(--panel); border-radius: var(--r-m); font-size: var(--t-label); }
+.map-legend .sw-route { display: inline-block; width: 16px; height: 3px; margin-right: 7px; vertical-align: 3px; border-radius: 2px; background: #6f7d6a; }
 .map-legend { position: absolute; z-index: 2; left: 10px; top: 10px; list-style: none; margin: 0; padding: 6px 10px; display: flex; gap: 12px; border-radius: var(--r-m); background: rgba(14, 15, 14, 0.86); font-size: var(--t-micro); color: var(--ink-2); }
 .maplibregl-ctrl-group { background: var(--panel) !important; border: 1px solid var(--rule-2); box-shadow: none !important; }
 .maplibregl-ctrl-group button + button { border-top-color: var(--rule-2) !important; }

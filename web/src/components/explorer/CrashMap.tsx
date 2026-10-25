@@ -75,6 +75,18 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
       m.on('load', () => {
         m!.addSource('counties', { type: 'geojson', data: counties as FeatureCollection });
         m!.addLayer({ id: 'county-line', type: 'line', source: 'counties', paint: { 'line-color': '#4a524a', 'line-width': 1 } });
+        // The state highway network under the crashes, so a cluster can be read as "on US 84" or "on I-27".
+        m!.addLayer({
+          id: 'route-line', type: 'line', source: 'openmaptiles', 'source-layer': 'transportation',
+          filter: ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], true, false],
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: {
+            'line-color': ['match', ['get', 'class'], 'motorway', '#6f7d6a', 'trunk', '#56614f', '#434b41'] as never,
+            'line-width': ['interpolate', ['linear'], ['zoom'],
+              6, ['match', ['get', 'class'], 'motorway', 1.4, 'trunk', 1, 0.6],
+              12, ['match', ['get', 'class'], 'motorway', 3.2, 'trunk', 2.4, 1.6]] as never,
+          },
+        });
         m!.addSource('crashes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         m!.addLayer({
           id: 'crash', type: 'circle', source: 'crashes',
@@ -90,6 +102,19 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
             'circle-stroke-color': '#0e0f0e',
             'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0, 12, 1] as never,
           },
+        });
+        // Route numbers (I 27, US 84, SH 114…) above the points, so they stay readable over a dense corridor.
+        m!.addLayer({
+          id: 'route-label', type: 'symbol', source: 'openmaptiles', 'source-layer': 'transportation_name', minzoom: 6.5,
+          filter: ['all', ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], true, false], ['has', 'ref']],
+          layout: {
+            'symbol-placement': 'line', 'symbol-spacing': 420,
+            // OpenMapTiles keeps the route system in `network`: show I-27, US 84, SH 114 as a Texas map does.
+            'text-field': ['concat', ['match', ['get', 'network'], 'us-interstate', 'I-', 'us-highway', 'US ', 'us-state', 'SH ', ''], ['get', 'ref']] as never,
+            'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 7, 10, 12, 12] as never,
+            'text-letter-spacing': 0.04, 'text-rotation-alignment': 'viewport', 'text-max-angle': 30,
+          },
+          paint: { 'text-color': '#c9d1c5', 'text-halo-color': '#0b0c0b', 'text-halo-width': 1.6 },
         });
         m!.addLayer({
           id: 'crash-selected', type: 'circle', source: 'crashes', filter: ['==', ['get', 'id'], -1],
@@ -143,8 +168,9 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
   return (
     <div className="map" ref={el} role="region" aria-label="Crash map. Click a crash mark to open its record; the records table below lists the same crashes.">
       {failed && <p className="map-msg">The map could not be drawn (WebGL unavailable or the basemap unreachable). Every chart and table on this page still works.</p>}
-      <ul className="map-legend" aria-label="Severity legend">
+      <ul className="map-legend" aria-label="Map legend">
         <li><i className="sw k" />K fatal</li><li><i className="sw a" />A suspected serious</li><li><i className="sw b" />B suspected minor</li><li><i className="sw c" />C possible</li>
+        <li><i className="sw-route" aria-hidden="true" />Interstate, US and state highways</li>
       </ul>
     </div>
   );
