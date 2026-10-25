@@ -138,3 +138,5 @@ class PointsResponse(Filtered):
     lat: list[float]
     severity: str = Field(description="One KABC letter per point, same order as the arrays.")
     day: list[int] = Field(description="Crash date as days since `start`.")
+    streets: list[str] = Field(description="Street names in this response, as CRIS writes them (US0084, SLIDE RD).")
+    street: list[int] = Field(description="Index into `streets` per point; -1 when the street is not recorded.")

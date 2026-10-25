@@ -214,7 +214,7 @@ FastAPI, read-only (`GET`), with the interactive reference at [`/api/docs`](http
 | Which factors come up most? | `/api/v1/factors?limit=5` |
 | Is it rising or falling, at what time of day? | `/api/v1/trends?by=year\|month\|hour\|weekday` |
 | Which day and hour are worst? | `/api/v1/heatmap` |
-| Which county, road class, weather…? | `/api/v1/breakdown?by=county\|road_class\|rural\|weather\|collision\|first_event\|intersection\|speed_limit` |
+| Which county, road class, weather…? | `/api/v1/breakdown?by=county\|road_class\|rural\|weather\|collision\|first_event\|intersection\|speed_limit\|street` |
 | Give me the records, or a CSV for Excel or pandas | `/api/v1/crashes?limit=&offset=&sort=` · `/api/v1/crashes?format=csv` |
 | One crash | `/api/v1/crashes/{crash_id}` |
 | Points for a map | `/api/v1/points` |

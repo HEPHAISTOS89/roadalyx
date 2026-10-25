@@ -86,6 +86,15 @@ def test_crash_records_paging_detail_and_points():
     pts = get("/api/v1/points")
     assert pts["located"] == 2 and pts["severity"] == "CK" and len(pts["lat"]) == 2
     assert pts["start"] == "2024-03-05" and pts["day"] == [121, 666]  # 2024-07-04, 2025-12-31
+    # each street name is sent once; every point points into that list (-1 when not recorded)
+    assert len(pts["street"]) == 2 and all(-1 <= i < len(pts["streets"]) for i in pts["street"])
+    assert pts["streets"] == sorted(set(pts["streets"]))
+
+
+def test_breakdown_by_street_ranks_corridors():
+    rows = get("/api/v1/breakdown", by="street")["groups"]
+    assert sum(r["crashes"] for r in rows) == 4
+    assert [r["crashes"] for r in rows if r["value"]] == sorted((r["crashes"] for r in rows if r["value"]), reverse=True)
 
 
 def test_csv_export():

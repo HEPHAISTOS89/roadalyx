@@ -21,7 +21,7 @@ SEVERITY_LABELS = {
 NON_CAUSAL_FACTORS = {"NONE", "OTHER (EXPLAIN IN NARRATIVE)"}
 TREND_AXES = ("year", "month", "hour", "weekday")
 BREAKDOWN_FIELDS = ("county", "road_class", "rural", "weather", "collision", "first_event",
-                    "intersection", "speed_limit")
+                    "intersection", "speed_limit", "street")
 
 
 def _by_severity(crashes) -> dict[str, int]:

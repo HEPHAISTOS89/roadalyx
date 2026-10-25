@@ -39,4 +39,4 @@ export interface Crash {
   school_zone: boolean | null; reportable: boolean | null; vru: string[];
 }
 export interface CrashPage extends Filtered { limit: number; offset: number; crashes: Crash[] }
-export interface Points extends Filtered { located: number; start: string; id: number[]; lon: number[]; lat: number[]; severity: string; day: number[] }
+export interface Points extends Filtered { located: number; start: string; id: number[]; lon: number[]; lat: number[]; severity: string; day: number[]; streets: string[]; street: number[] }

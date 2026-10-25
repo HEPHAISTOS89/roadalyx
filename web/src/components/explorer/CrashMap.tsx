@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Map as MlMap, NavigationControl, FullscreenControl, Popup, setWorkerUrl, type GeoJSONSource, type MapLayerMouseEvent, type StyleSpecification } from 'maplibre-gl';
 // MapLibre 6 runs tile parsing in a module worker; let Vite bundle it so the production build ships it.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
@@ -8,6 +8,7 @@ import counties from '../../data/counties.json';
 import CanvasMap from '../maps/CanvasMap';
 import { supportsWebGL2 } from '../../lib/map2d';
 import type { Points } from '../../lib/types';
+import { int, pct, road } from '../../lib/format';
 
 const DISTRICT: [[number, number], [number, number]] = [[-103.07, 32.52], [-101.04, 34.75]];
 const SEV_COLOR = ['match', ['get', 's'], 'K', '#d31246', 'A', '#f27000', 'B', '#e7b63b', '#d0d8e1'];
@@ -23,9 +24,9 @@ const POINT_OPACITY = {
 };
 
 const ROAD_COLOR: Record<string, string> = {
-  highway_minor: '#262c29', highway_path: '#1d2220',
-  highway_major_casing: '#3d4645', highway_major_inner: '#2c3332', highway_major_subtle: '#333b3a',
-  highway_motorway_casing: '#5c686a', highway_motorway_inner: '#3f494b', highway_motorway_subtle: '#465052',
+  highway_minor: '#2d3431', highway_path: '#1f2422',
+  highway_major_casing: '#4c5754', highway_major_inner: '#363f3c', highway_major_subtle: '#3c4643',
+  highway_motorway_casing: '#74838a', highway_motorway_inner: '#4f5c61', highway_motorway_subtle: '#5a676d',
 };
 
 const AREA_COLOR: Record<string, string> = {
@@ -50,7 +51,7 @@ function baseStyle() {
         for (const key of ['fill-pattern', 'line-pattern', 'background-pattern']) delete paint[key];
         if (l.type === 'background') paint['background-color'] = '#0e0f0e';
         // Towns stay readable for orientation; street names recede.
-        if (l.type === 'symbol') paint['text-color'] = l.id.startsWith('place') ? '#b4bbb1' : '#8f968d';
+        if (l.type === 'symbol') paint['text-color'] = l.id.startsWith('place') ? '#c3c9bf' : '#9ba398';
         // A full road hierarchy in cool greys, read like a road map at night: casings on major roads,
         // streets visible once zoomed in, all below the warm severity colours of the crashes.
         const road = ROAD_COLOR[l.id];
@@ -82,6 +83,11 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
   const [failed, setFailed] = useState(() => !supportsWebGL2());
   const [mode, setMode] = useState<Mode>('crashes');
   const [tilted, setTilted] = useState(false);
+  // Corridor under the pointer in the list, and the one clicked (kept until clicked again).
+  const [hoverRoad, setHoverRoad] = useState<number | null>(null);
+  const [pinned, setPinned] = useState<number | null>(null);
+  const [showRoads, setShowRoads] = useState(() => window.innerWidth > 700);
+  const corridor = hoverRoad ?? pinned;
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const select = useRef(onSelect);
@@ -226,12 +232,41 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
   }, [failed]);
 
   const start = useRef('2020-01-01');
+  // The streets with the most located crashes in the current selection, and their K+A share.
+  const corridors = useMemo(() => {
+    if (!points?.streets) return [];
+    const crashes = new Map<number, { n: number; ka: number }>();
+    points.street.forEach((st, i) => {
+      if (st < 0) return;
+      const c = crashes.get(st) ?? { n: 0, ka: 0 };
+      c.n++;
+      if (points.severity[i] === 'K' || points.severity[i] === 'A') c.ka++;
+      crashes.set(st, c);
+    });
+    return [...crashes].sort((a, b) => b[1].n - a[1].n).slice(0, 8)
+      .map(([st, c]) => ({ st, name: road(points.streets[st]), crashes: c.n, ka: c.ka / c.n }));
+  }, [points]);
+  useEffect(() => { setPinned(null); setHoverRoad(null); }, [points]);
   useEffect(() => {
     const m = map.current;
     if (!ready || !m) return;
     m.setLayoutProperty('density', 'visibility', mode === 'hotspots' ? 'visible' : 'none');
-    m.setPaintProperty('crash', 'circle-opacity', POINT_OPACITY[mode] as never);
-  }, [ready, mode]);
+    const on = ['==', ['get', 'st'], corridor ?? -2];
+    // A chosen corridor keeps its crashes and fades the rest, in both views.
+    m.setPaintProperty('crash', 'circle-opacity', (corridor == null ? POINT_OPACITY[mode]
+      : ['case', on, mode === 'hotspots' ? 0.95 : POINT_OPACITY.crashes, 0.07]) as never);
+    m.setFilter('density', corridor == null ? null : on as never);
+  }, [ready, mode, corridor]);
+  const pin = (st: number) => {
+    const next = pinned === st ? null : st;
+    setPinned(next);
+    const m = map.current;
+    if (next == null || !m || !points) return;
+    const lon: number[] = [], lat: number[] = [];
+    points.street.forEach((s, i) => { if (s === next) { lon.push(points.lon[i]); lat.push(points.lat[i]); } });
+    m.fitBounds([[Math.min(...lon), Math.min(...lat)], [Math.max(...lon), Math.max(...lat)]],
+      { padding: { top: 60, bottom: 60, left: showRoads ? 280 : 60, right: 60 }, maxZoom: 14, duration: reduced() ? 0 : 800 });
+  };
   useEffect(() => {
     const m = map.current;
     if (!ready || !m) return;
@@ -246,7 +281,7 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
     }
     start.current = points.start;
     const features = points.id.map((id, i) => ({
-      type: 'Feature' as const, properties: { id, s: points.severity[i], d: points.day[i] },
+      type: 'Feature' as const, properties: { id, s: points.severity[i], d: points.day[i], st: points.street?.[i] ?? -1 },
       geometry: { type: 'Point' as const, coordinates: [points.lon[i], points.lat[i]] },
     }));
     (map.current.getSource('crashes') as GeoJSONSource).setData({ type: 'FeatureCollection', features });
@@ -277,6 +312,26 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
           : <><li><i className="sw k" />K fatal</li><li><i className="sw a" />A suspected serious</li><li><i className="sw b" />B suspected minor</li><li><i className="sw c" />C possible</li></>}
         <li><i className="sw-route" aria-hidden="true" />Interstate, US and state highways</li>
       </ul>
+      {showRoads && corridors.length > 0 && (
+        <section className="corridors" aria-labelledby="corr-h">
+          <h3 id="corr-h">Top corridors<span>located crashes · K+A share</span></h3>
+          <ol onMouseLeave={() => setHoverRoad(null)}>
+            {corridors.map((c, i) => (
+              <li key={c.st}>
+                <button type="button" aria-pressed={pinned === c.st} onMouseEnter={() => setHoverRoad(c.st)}
+                  onFocus={() => setHoverRoad(c.st)} onBlur={() => setHoverRoad(null)} onClick={() => pin(c.st)}
+                  aria-label={`${c.name}: ${int(c.crashes)} located crashes, ${pct(c.ka)} fatal or serious. ${pinned === c.st ? 'Show all crashes' : 'Show only this corridor'}.`}>
+                  <span className="num rank">{i + 1}</span>
+                  <span className="name">{c.name}</span>
+                  <span className="num">{int(c.crashes)}</span>
+                  <span className="ka"><i style={{ width: `${Math.min(c.ka / 0.3, 1) * 100}%` }} /></span>
+                  <span className="num ka-v">{pct(c.ka, 0)}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
       <div className="map-modes">
         <div role="group" aria-label="Map view">
           <button type="button" aria-pressed={mode === 'crashes'} onClick={() => setMode('crashes')}>Crashes</button>
@@ -285,6 +340,7 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
         </div>
         <button type="button" aria-pressed={tilted} onClick={() => setTilted(!tilted)}
           title="Tilt the map to see buildings in 3D; right-drag also tilts and turns it">3D</button>
+        <button type="button" aria-pressed={showRoads} onClick={() => setShowRoads(!showRoads)}>Corridors</button>
       </div>
     </div>
   );

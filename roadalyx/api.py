@@ -240,7 +240,7 @@ def heatmap(f: FilterDep):
          summary="Crashes and severity mix per county, road class, weather...")
 def breakdown(f: FilterDep,
               by: Literal["county", "road_class", "rural", "weather", "collision", "first_event",
-                          "intersection", "speed_limit"] = "county",
+                          "intersection", "speed_limit", "street"] = "county",
               limit: Annotated[int | None, Query(ge=1, le=500)] = None):
     crashes = f.apply(data().crashes)
     return _envelope(f, crashes, metrics.breakdown(crashes, by, limit))
@@ -299,6 +299,9 @@ def crash(crash_id: int):
 def points(f: FilterDep):
     rows = f.apply(data().crashes)
     located = [c for c in rows if c["lat"] is not None and c["lon"] is not None]
+    # Street names repeat across thousands of crashes: send each once, and an index per point.
+    streets = sorted({c["street"] for c in located if c["street"]})
+    index = {name: i for i, name in enumerate(streets)}
     return _envelope(f, rows, {
         "located": len(located),
         "start": data().coverage[0].isoformat(),
@@ -307,6 +310,8 @@ def points(f: FilterDep):
         "lat": [c["lat"] for c in located],
         "severity": "".join(c["severity"] for c in located),
         "day": [data().day[c["id"]] for c in located],
+        "streets": streets,
+        "street": [index.get(c["street"], -1) for c in located],
     })
 
 
