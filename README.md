@@ -376,4 +376,4 @@ data/raw/            put district_crashes.csv here (not committed)
 
 ---
 
-<sub>Data: TxDOT Crash Records Information System (CRIS), query export supplied by TransTech Lab; TxDOT makes no warranty as to the accuracy of CRIS data. County boundaries: US Census Bureau, via `us-atlas`. Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors. Developed with the help of an AI coding assistant (Claude Code).</sub>
+<sub>Data: TxDOT Crash Records Information System (CRIS), query export supplied by TransTech Lab; TxDOT makes no warranty as to the accuracy of CRIS data. County boundaries: US Census Bureau, via `us-atlas`. District map roads, water and town limits: US Census Bureau TIGER/Line 2024, built with `scripts/build_roads.py`. Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors. Developed with the help of an AI coding assistant (Claude Code).</sub>

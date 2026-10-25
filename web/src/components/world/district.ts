@@ -11,9 +11,9 @@ import type { Points } from '../../lib/types';
 
 /**
  * The Lubbock District at night, drawn from data: county lines from the Census boundary file,
- * one light per located crash at its CRIS coordinates. Fatal and serious-injury crashes stand
- * as thin posts, and each fatal crash sends a ring across the ground when the timeline reaches it.
- * Nothing in the scene is invented: the road network you see is the crashes.
+ * the road network from Census TIGER/Line, and one light per located crash at its CRIS coordinates.
+ * Fatal and serious-injury crashes stand as thin posts, and each fatal crash sends a ring across
+ * the ground when the timeline reaches it. Route numbers sit on the highways, as on a road map.
  *
  * The camera orbits slowly and the timeline loops until the visitor drags, zooms, picks a county
  * or presses pause. With reduced motion, the scene is still and renders only on change.
@@ -272,17 +272,80 @@ export function createWorld(o: WorldOptions): World {
   }
 
   const lineMats: LineMaterial[] = [];
-  const addLines = (list: { a: THREE.Vector3; b: THREE.Vector3 }[], color: number, width: number, opacity: number) => {
-    const g = new LineSegmentsGeometry().setPositions(list.flatMap(({ a, b }) => [a.x, a.y, a.z, b.x, b.y, b.z]));
+  const addLines = (positions: number[], color: number, width: number, opacity: number, order = 2) => {
+    const g = new LineSegmentsGeometry().setPositions(positions);
     const m = new LineMaterial({ color, linewidth: width, transparent: true, opacity, depthWrite: false });
+    m.resolution.set(host.clientWidth, host.clientHeight);
     lineMats.push(m);
     const l = new LineSegments2(g, m);
-    l.renderOrder = 2;
+    l.renderOrder = order;
     scene.add(l);
   };
+  const edgeList = (list: { a: THREE.Vector3; b: THREE.Vector3 }[]) => list.flatMap(({ a, b }) => [a.x, a.y, a.z, b.x, b.y, b.z]);
   const all = [...edges.values()];
-  addLines(all.filter((e) => e.uses > 1), 0x58625a, 1, 0.55);
-  addLines(all.filter((e) => e.uses === 1), 0x9aa797, 1.6, 0.8);
+  addLines(edgeList(all.filter((e) => e.uses > 1)), 0x58625a, 1, 0.55);
+  addLines(edgeList(all.filter((e) => e.uses === 1)), 0x9aa797, 1.6, 0.8);
+
+  // Roads, from Census TIGER/Line: loaded after the first frame so the crashes never wait for them.
+  // A cool grey hierarchy under the warm severity colours: interstates brightest and widest, then US
+  // and state highways (FM roads included); every street and county road as a hairline.
+  const routeEls: { el: HTMLElement; at: THREE.Vector3; near: number }[] = [];
+  let disposed = false;
+  let streets: THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial> | null = null;
+  void import('../../data/roads.json').then(({ default: roads }) => {
+    if (disposed) return;
+    const segments = (lines: number[][], y: number) => {
+      const out: number[] = [];
+      for (const l of lines) {
+        for (let i = 0; i + 3 < l.length; i += 2) {
+          const a = project(l[i], l[i + 1]), b = project(l[i + 2], l[i + 3]);
+          out.push(a.x, y, a.z, b.x, y, b.z);
+        }
+      }
+      return out;
+    };
+    // Lakes and playas, then the built-up area of each town, both just above the county fills.
+    const fills = (rings: number[][], color: number, y: number, order: number) => {
+      const shapes = rings.filter((r) => r.length >= 6).map((r) => {
+        const pts: THREE.Vector2[] = [];
+        for (let i = 0; i + 1 < r.length; i += 2) { const p = project(r[i], r[i + 1]); pts.push(new THREE.Vector2(p.x, -p.z)); }
+        return new THREE.Shape(pts);
+      });
+      const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shapes), new THREE.MeshBasicMaterial({ color, depthWrite: false }));
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.y = y;
+      mesh.renderOrder = order;
+      scene.add(mesh);
+    };
+    fills(roads.water, 0x0f1d27, 0.005, 1.2);
+    fills(roads.places, 0x161b19, 0.01, 1.3);
+    for (const [name, lon, lat, km2] of roads.towns as [string, number, number, number][]) {
+      const el = document.createElement('i');
+      el.textContent = name;
+      if (km2 >= 100) el.dataset.size = 'city';
+      labels.append(el);
+      // Lubbock reads from the whole district, county seats from mid range, villages only up close
+      routeEls.push({ el, at: project(lon, lat), near: km2 >= 100 ? 700 : km2 >= 5 ? 240 : 110 });
+    }
+    const local = new THREE.BufferGeometry();
+    local.setAttribute('position', new THREE.Float32BufferAttribute(segments(roads.l, 0.02), 3));
+    streets = new THREE.LineSegments(local, new THREE.LineBasicMaterial({ color: 0x3a4341, transparent: true, opacity: 0.32, depthWrite: false }));
+    streets.renderOrder = 1.5;
+    streets.frustumCulled = false;
+    scene.add(streets);
+    addLines(segments(roads.s, 0.04), 0x66737a, 1, 0.55, 1.6);
+    addLines(segments(roads.u, 0.05), 0x8d9ba3, 1.4, 0.7, 1.7);
+    addLines(segments(roads.i, 0.06), 0xc2ccd2, 2, 0.85, 1.8);
+    for (const [text, lon, lat] of roads.labels as [string, number, number][]) {
+      const el = document.createElement('b');
+      el.textContent = text;
+      el.dataset.route = text.slice(0, 2).trim().replace('-', '');
+      labels.append(el);
+      // state highway numbers appear only closer in, so the district view stays readable
+      routeEls.push({ el, at: project(lon, lat), near: text.startsWith('SH') ? 170 : 300 });
+    }
+    dirty = true;
+  });
 
   // Crash lights.
   const n = points.lon.length;
@@ -519,12 +582,14 @@ export function createWorld(o: WorldOptions): World {
     if (!dirty || !host.clientWidth || !host.clientHeight) return;
     dirty = false;
     place();
+    // the street grid comes up as the camera nears a town, and stays a hairline from the whole district
+    if (streets) streets.material.opacity = THREE.MathUtils.clamp(0.75 - cam.radius / 700, 0.28, 0.62);
     composer.render();
     const { clientWidth: w, clientHeight: h } = host;
-    for (const { el, at } of labelEls) {
+    for (const { el, at, near } of [...labelEls.map((l) => ({ ...l, near: 420 })), ...routeEls]) {
       v.copy(at).project(camera);
       const visible = v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1;
-      el.style.opacity = visible ? String(THREE.MathUtils.clamp(1.4 - camera.position.distanceTo(at) / 420, 0, 0.85)) : '0';
+      el.style.opacity = visible ? String(THREE.MathUtils.clamp(1.4 - camera.position.distanceTo(at) / near, 0, 0.85)) : '0';
       el.style.transform = `translate(${((v.x + 1) / 2) * w}px, ${((1 - v.y) / 2) * h}px) translate(-50%, -50%)`;
     }
   };
@@ -567,6 +632,7 @@ export function createWorld(o: WorldOptions): World {
       else cancelAnimationFrame(raf);
     },
     dispose() {
+      disposed = true;
       cancelAnimationFrame(raf);
       ro.disconnect();
       canvas.removeEventListener('pointerdown', down);

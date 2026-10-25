@@ -12,6 +12,17 @@ import type { Points } from '../../lib/types';
 const DISTRICT: [[number, number], [number, number]] = [[-103.07, 32.52], [-101.04, 34.75]];
 const SEV_COLOR = ['match', ['get', 's'], 'K', '#d31246', 'A', '#f27000', 'B', '#e7b63b', '#d0d8e1'];
 
+const ROAD_COLOR: Record<string, string> = {
+  highway_minor: '#262c29', highway_path: '#1d2220',
+  highway_major_casing: '#3d4645', highway_major_inner: '#2c3332', highway_major_subtle: '#333b3a',
+  highway_motorway_casing: '#5c686a', highway_motorway_inner: '#3f494b', highway_motorway_subtle: '#465052',
+};
+
+const AREA_COLOR: Record<string, string> = {
+  water: '#15222e', landuse_residential: '#141716', landuse_park: '#142019', landcover_wood: '#141d17',
+  building: '#1c201f', 'aeroway-area': '#171b1a',
+};
+
 setWorkerUrl(workerUrl);
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -28,10 +39,17 @@ function baseStyle() {
         // Decorative sprite textures are unnecessary on this data-focused basemap.
         for (const key of ['fill-pattern', 'line-pattern', 'background-pattern']) delete paint[key];
         if (l.type === 'background') paint['background-color'] = '#0e0f0e';
-        if (l.type === 'symbol') paint['text-color'] = '#8f968d';
-        if (l.type === 'line' && l.id.startsWith('highway')) {
-          paint['line-color'] = l.id.includes('casing') ? '#30362f' : l.id.includes('motorway') ? '#2a2f29' : '#1e221e';
-        }
+        // Towns stay readable for orientation; street names recede.
+        if (l.type === 'symbol') paint['text-color'] = l.id.startsWith('place') ? '#b4bbb1' : '#8f968d';
+        // A full road hierarchy in cool greys, read like a road map at night: casings on major roads,
+        // streets visible once zoomed in, all below the warm severity colours of the crashes.
+        const road = ROAD_COLOR[l.id];
+        if (road) paint['line-color'] = road;
+        // Water, parks, built-up areas and building footprints, so a town reads as on a road map.
+        const area = AREA_COLOR[l.id];
+        if (area) { paint['fill-color'] = area; paint['fill-opacity'] = 1; }
+        if (l.id === 'building') paint['fill-outline-color'] = '#2c3330';
+        if (l.id === 'highway_minor') paint['line-opacity'] = 1;
         l.paint = paint as never;
       }
       return s;
@@ -93,7 +111,7 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
           filter: ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], true, false],
           layout: { 'line-cap': 'round', 'line-join': 'round' },
           paint: {
-            'line-color': ['match', ['get', 'class'], 'motorway', '#6f7d6a', 'trunk', '#56614f', '#434b41'] as never,
+            'line-color': ['match', ['get', 'class'], 'motorway', '#a4b2b8', 'trunk', '#7d8a8f', '#5f6a6e'] as never,
             'line-width': ['interpolate', ['linear'], ['zoom'],
               6, ['match', ['get', 'class'], 'motorway', 1.4, 'trunk', 1, 0.6],
               12, ['match', ['get', 'class'], 'motorway', 3.2, 'trunk', 2.4, 1.6]] as never,
