@@ -134,9 +134,9 @@ python -m nbconvert --to notebook --execute --inplace notebooks/eda.ipynb
 
 **One row is a person, not a crash.** The export has 67,906 rows for 24,261 crashes: every driver, passenger and pedestrian gets a row, and the crash's fields are copied onto each of them. Counting rows would count a four-person crash four times. I checked that the copied crash fields never disagree inside a crash, then built one record per Crash ID. The result matches the export's own header (24,261 crashes).
 
-I keep **all 24,261 supplied crashes**, including **782 marked non-reportable**. In this file, those 782 also have Road Class `NON TRAFFICWAY`. I do not remove them: the task asks me to analyze the supplied export, whose header includes them. The results below and the portal use this full set, not reportable crashes only.
+I keep **all 24,261 supplied crashes**, including **782 marked non-reportable**. In this file, those 782 also have Road Class `NON TRAFFICWAY`. I keep them because the task is to analyze the supplied export, and its header counts them. The results below and the portal use this full set, not reportable crashes only.
 
-I also found **295 extra identical person rows in 50 crashes**. I keep them because the export has no unique person ID to establish whether they are duplicate entries or different people with the same recorded values. They do not change the three crash-level results. The record view's person count is a count of source rows, not independently verified unique people.
+I also found **295 extra identical person rows in 50 crashes**. I keep them because the export has no unique person ID to establish whether they are duplicate entries or different people with the same recorded values. They do not change the three crash-level results. So the person count in the record view counts source rows; I cannot confirm that each one is a different person.
 
 The other findings and formats I checked:
 
@@ -151,7 +151,7 @@ The other findings and formats I checked:
 | Yes/No, YES/NO and true/false in flag columns | Converted to true/false | One spelling per answer |
 | 2026 ends on 20 October | Marked as a partial year and month | So 2026 does not look like a drop |
 
-County names and factor labels are already uppercase in this file. I still normalize case as a precaution; the observed factor-label problem is the spacing after semicolons.
+County names and factor labels are already uppercase in this file. I still normalize case, as a precaution. The real problem in the factor labels is the spacing after semicolons.
 
 The full reasoning, with the code that checks each point, is in the [EDA notebook](notebooks/eda.ipynb).
 
@@ -204,7 +204,7 @@ The 624 fatal crashes killed 707 people. A crash can cite several factors, so fa
 | Unsafe speed | 2,034 | 2,011 |
 | Disregard stop and go signal | 2,016 | 2,016 |
 
-I show this comparison in the EDA. I have not added a reportable-only filter to the API or portal.
+The EDA shows this comparison. I chose not to add a reportable-only filter to the API or the portal.
 
 ## <img src="docs/assets/icons/api.svg" width="26" height="26" align="top" alt=""> The API
 
@@ -257,7 +257,7 @@ fatal_and_serious = pd.read_csv(f"{url}?format=csv&county=lubbock&severity=K,A")
 
 ### Why this architecture
 
-The cleaned dataset is small: 24,261 records, 0.9 MB compressed. Held in memory, any filter answers in milliseconds, so **the whole application is one Lambda function** that loads the file once and computes every answer from memory. There is no database to run and no server to keep on, and an idle function costs nothing. The cleaning (pandas) runs once per export before deployment, not on every request.
+The cleaned dataset is small: 24,261 records, 0.9 MB compressed. Held in memory, any filter answers in milliseconds, so I made **the whole application one Lambda function**: it loads the file once and computes every answer from memory. There is no database to run and no server to keep on, and an idle function costs nothing. The cleaning (pandas) runs once per export before deployment, not on every request.
 
 ### The services, and why each one
 
@@ -287,7 +287,7 @@ The cleaned dataset is small: 24,261 records, 0.9 MB compressed. Held in memory,
 The bucket is never public: only the function reads it, through its role.
 
 <details>
-<summary><b>Alternatives I did not use</b> — and why (EC2, databases, API Gateway, CloudFront, Glue)</summary>
+<summary><b>Alternatives I did not use</b>, and why: EC2, databases, API Gateway, CloudFront, Glue</summary>
 
 | Option | Why not here |
 |---|---|
@@ -300,12 +300,12 @@ The bucket is never public: only the function reads it, through its role.
 </details>
 
 <details>
-<summary><b>Staying within the Free Tier</b> — the numbers, service by service</summary>
+<summary><b>Staying within the Free Tier</b>: the numbers, service by service</summary>
 
 | Service | Free allowance | This project |
 |---|---|---|
 | Lambda | 1 million requests and 400,000 GB-seconds per month, permanently | A warm request takes tens of milliseconds at 1 GB, so even a few hundred thousand requests stay far below it |
-| Function URL, IAM, CloudFormation | No charge | — |
+| Function URL, IAM, CloudFormation | No charge | Nothing to count |
 | CloudWatch Logs | 5 GB of logs per month | A few kilobytes per day, deleted after 14 days |
 | S3 | A few gigabytes of storage | About 13 MB: the dataset and two code packages |
 
@@ -314,7 +314,7 @@ There is no NAT gateway, database, load balancer or always-on instance. The acco
 </details>
 
 <details>
-<summary><b>Security</b> — credentials, bucket, API and CSV safeguards</summary>
+<summary><b>Security</b>: credentials, bucket, API and CSV safeguards</summary>
 
 - No credentials in the code: the deploy script uses the operator's AWS CLI session and fails without one.
 - Bucket: Block Public Access, server-side encryption, and a policy that refuses non-HTTPS requests.
@@ -346,7 +346,7 @@ scripts/deploy.sh data               # after processing a new export: upload the
 
 I prioritized the three required results: count crashes rather than person rows, split the factor lists correctly, and mark the partial year. The notebook and tests check those results against the export. I kept the supplied scope and used the EDA to show how excluding non-reportable crashes would change the ranking, rather than adding another portal filter.
 
-I use one filter implementation for the aggregate and search endpoints, one Lambda function reading one file, and a frontend built on the same API. I did not add user accounts or a database. I left rate limiting out of this assessment and would add it before wider public use.
+I kept the design small: one filter implementation for the aggregate and search endpoints, one Lambda function reading one file, and a frontend built on the same API. I did not add user accounts or a database. I left rate limiting out of this assessment and would add it before wider public use.
 
 ## <img src="docs/assets/icons/limits.svg" width="26" height="26" align="top" alt=""> Limitations and what I would do next
 
@@ -356,7 +356,7 @@ I use one filter implementation for the aggregate and search endpoints, one Lamb
 
 ## <img src="docs/assets/icons/frontend.svg" width="26" height="26" align="top" alt=""> The frontend
 
-A React frontend in [`web/`](web/), served by the same Lambda function and built only on the public API. It has two pages:
+I built the frontend in React ([`web/`](web/)) on the same public API, and the same Lambda function serves it. It has two pages:
 
 - **[Analysis](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis)**, for working with the data. Filters (county, severity, years, road class, factor, road users) update everything at once and are kept in the URL, so a view can be shared. It shows the key figures, a map of every located crash, severity and factor charts, trends on four time axes, a day-by-hour grid, a breakdown table, the crash records, and a CSV download of the current selection. On the map, a Location filter splits intersection, segment and driveway crashes, and a Top corridors list ranks streets by crashes: clicking one filters the whole page to that street. A Hotspots view shows crash density, and a 3D view tilts the map over the buildings.
 - **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/district-map)**, a 3D view of the 17 counties, with their roads and towns from Census TIGER/Line, where the crashes build up month by month from 2020 to 2026. Clicking a county opens its figures and a link to the Analysis page.
