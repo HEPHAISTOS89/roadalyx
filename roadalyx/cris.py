@@ -152,7 +152,7 @@ def build_crashes(persons: pd.DataFrame) -> list[dict]:
             date = pd.NaT
         if pd.isna(date):
             raise ValueError(f"Crash {crash_id}: missing or invalid Crash Date {r['Crash Date']!r}")
-        hhmm = _int(r["Crash Time"])  # HHMM as an integer: 5 is 00:05, 1730 is 17:30
+        hhmm = _int(r["Crash Time"])  # HHMM: "0140" is 01:40, "1730" is 17:30
         if hhmm is not None and not (0 <= hhmm <= 2359 and hhmm % 100 < 60):
             hhmm = None
         speed = _int(r["Speed Limit"])
