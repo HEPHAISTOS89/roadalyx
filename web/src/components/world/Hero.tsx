@@ -38,8 +38,8 @@ function years(start: Date, last: number) {
 /**
  * The district at night: every located crash at its CRIS coordinates, K and A crashes as posts.
  * The timeline loops 2020 to 2026 while the camera orbits; the pause button stops both. Drag turns
- * it, the wheel zooms, a click on a county opens that county's figures and a link to the Explorer.
- * Everything here is also in the Explorer, which works without WebGL.
+ * it, the wheel zooms, a click on a county opens that county's figures and a link to the Analysis page.
+ * Everything here is also on the Analysis page, which works without WebGL.
  */
 export default function Hero() {
   const pts = useApi<Points>('/api/v1/points');
@@ -176,7 +176,7 @@ export default function Hero() {
         {broken && (
           <p className="hero-fallback">
             {pts.error ? 'The crash data could not be loaded. Reload the page to try again.'
-              : 'WebGL 2 is unavailable, so the 3D map is off. The Explorer has the same figures and a 2D map.'}
+              : 'WebGL 2 is unavailable, so the 3D map is off. The Analysis page has the same figures and a 2D map.'}
           </p>
         )}
         {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">{coarse ? 'Drag to rotate · tap a county' : 'Drag to rotate · scroll to zoom · click a county'}</p>}
@@ -218,7 +218,7 @@ export default function Hero() {
                 </dl>
               </>
             ) : <p className="muted">Loading…</p>}
-            <Link className="finding-cta" to={`/explorer?county=${slug(picked)}`}>Open in the Explorer<ArrowRightIcon aria-hidden="true" /></Link>
+            <Link className="finding-cta" to={`/explorer?county=${slug(picked)}`}>Open in Analysis<ArrowRightIcon aria-hidden="true" /></Link>
           </section>
         )}
       </div>
