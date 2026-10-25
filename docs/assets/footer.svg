@@ -13,5 +13,5 @@
     <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.92;1" dur="7s" repeatCount="indefinite"/>
   </circle>
 
-  <text x="848" y="34" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" fill="#6f7a6c">TxDOT CRIS · Lubbock District · 20202026</text>
+  <text x="848" y="34" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11.5" fill="#6f7a6c">TxDOT CRIS Â· Lubbock District Â· 2020â€“2026</text>
 </svg>
