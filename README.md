@@ -35,14 +35,14 @@ The dashboard brings together **24,261 injury crashes involving 67,906 people** 
 
 ## <img src="docs/assets/icons/contents.svg" width="26" height="26" align="top" alt=""> Contents
 
-1. [Where to find each requirement](#where-to-find-each-requirement)
-2. [Run it locally](#run-it-locally)
-3. [The data: what I found and the three results](#the-data-what-i-found-and-the-three-results)
-4. [The API](#the-api)
-5. [Deployment on AWS](#deployment-on-aws)
-6. [Scope decisions](#scope-decisions)
-7. [Limitations and what I would do next](#limitations-and-what-i-would-do-next)
-8. [The frontend](#the-frontend)
+1. [Where to find each requirement](#-where-to-find-each-requirement)
+2. [Run it locally](#-run-it-locally)
+3. [The data: what I found and the three results](#-the-data-what-i-found-and-the-three-results)
+4. [The API](#-the-api)
+5. [Deployment on AWS](#-deployment-on-aws)
+6. [Scope decisions](#-scope-decisions)
+7. [Limitations and what I would do next](#-limitations-and-what-i-would-do-next)
+8. [The frontend](#-the-frontend)
 
 ## <img src="docs/assets/icons/requirements.svg" width="26" height="26" align="top" alt=""> Where to find each requirement
 
@@ -338,7 +338,7 @@ scripts/deploy.sh                    # full deployment
 scripts/deploy.sh data               # after processing a new export: upload the data only
 ```
 
-`scripts/deploy.sh` needs the AWS CLI, Node 22.12+, `zip`, `rsync`, `curl` and the `.venv` from [Run it locally](#run-it-locally). It runs these steps and stops at the first failure:
+`scripts/deploy.sh` needs the AWS CLI, Node 22.12+, `zip`, `rsync`, `curl` and the `.venv` from [Run it locally](#-run-it-locally). It runs these steps and stops at the first failure:
 
 1. **Test.** Run the Python tests.
 2. **Build.** Build the frontend into `roadalyx/web`.
