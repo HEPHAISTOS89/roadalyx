@@ -12,6 +12,13 @@
   <a href="notebooks/eda.ipynb">EDA notebook</a>
 </p>
 <p align="center">
+  <a href="pyproject.toml"><img alt="Python 3.13" src="https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python&logoColor=white"></a>
+  <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.162-009688?style=flat-square&logo=fastapi&logoColor=white"></a>
+  <a href="#deployment-on-aws"><img alt="AWS Lambda, Free Tier" src="https://img.shields.io/badge/AWS_Lambda-Free_Tier-FF9900?style=flat-square"></a>
+  <a href="web/"><img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black"></a>
+  <a href="tests/"><img alt="Tests: 91 Python and 10 frontend, passing" src="https://img.shields.io/badge/tests-91_%2B_10_passing-2EA44F?style=flat-square"></a>
+</p>
+<p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer">
     <img src="docs/assets/analysis.jpg" width="880" alt="The Analysis page: filters for county, severity and years; totals of 24,261 injury crashes, 624 fatal and 1,546 suspected serious; a crash map of the 17 counties; severity bars and the ranked contributing factors.">
   </a>
