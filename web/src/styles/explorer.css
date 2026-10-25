@@ -8,7 +8,8 @@
 .scope b { color: var(--ink); font-weight: 600; }
 
 /* Filters */
-.filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.filters { display: grid; gap: var(--s2); }
+.filters-main { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
 .picker { position: relative; }
 .picker-btn, .seg button, .years select, .inline-select select {
   height: var(--ctl); border: 1px solid var(--rule-2); background: var(--panel); border-radius: var(--r-m);
@@ -45,8 +46,14 @@
 .seg button[aria-pressed='true'] { background: var(--raise); color: var(--ink); border-color: var(--accent); position: relative; z-index: 1; }
 .seg-sev { font-weight: 600; }
 .years { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); }
-.years select, .inline-select select { padding: 0 8px; }
-.reset { margin-left: auto; }
+.inline-select select { padding: 0 8px; }
+.years label { position: relative; display: inline-flex; }
+.years select { appearance: none; min-width: 82px; padding: 0 30px 0 12px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.years label > svg { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--ink-2); }
+.reset { margin-left: auto; white-space: nowrap; }
+.filters-main .btn { min-height: var(--ctl); }
+.filters-main .btn:active { transform: none; }
+.reset:not(:disabled) { border-color: var(--accent); }
 
 /* Key figures */
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border: 1px solid var(--rule); border-radius: var(--r-l); background: var(--ground-2); }
@@ -196,12 +203,10 @@ table.data tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparen
 .crash-card .kv dd { overflow-wrap: anywhere; }
 .crash-card-head { position: sticky; top: calc(-1 * var(--s4)); padding-block: 8px; background: #121412; z-index: 1; }
 .selection-status { min-height: 1.3em; font-size: var(--t-micro); color: var(--ink-2); }
-.advanced-filters { position: relative; }
-.advanced-filters summary { display: inline-flex; align-items: center; gap: 6px; list-style: none; cursor: pointer; padding: 7px 10px; min-height: var(--ctl); border: 1px solid var(--rule-2); border-radius: var(--r-m); font-size: var(--t-label); }
-.advanced-filters summary::-webkit-details-marker { display: none; }
-.advanced-filters[open] { flex-basis: 100%; }
-.advanced-filters[open] summary { width: fit-content; margin-bottom: var(--s2); }
-.advanced-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }
+.advanced-toggle { white-space: nowrap; }
+.advanced-toggle[aria-expanded='true'] { border-color: var(--accent); background: var(--raise); }
+.advanced-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); padding-top: var(--s2); border-top: 1px solid var(--rule); }
+.advanced-controls[hidden] { display: none; }
 .chart-readout { display: flex; flex-wrap: wrap; gap: 4px 12px; min-height: 2.8em; margin-top: 10px; font-size: var(--t-micro); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .chart-readout b { color: var(--ink); }
 .chart-data { font-size: var(--t-label); color: var(--ink-2); }
@@ -210,8 +215,7 @@ table.data tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparen
 .chart [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .map-loading { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; background: var(--ground-2); color: var(--ink-2); font-size: var(--t-label); }
 @media (max-width: 700px) {
-  .filters .reset { margin-left: auto; }
-  .filters .seg button, .years select, .advanced-filters summary, .picker-btn { min-height: 44px; }
+  .filters .seg button, .years select, .filters-main .btn, .picker-btn { min-height: 44px; }
   .chart .tick { font-size: 12px; }
   .tabs { max-width: 100%; flex-wrap: wrap; }
   .tabs button { min-height: 40px; }
