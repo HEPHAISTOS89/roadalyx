@@ -56,10 +56,19 @@ You need **Python 3.12 or 3.13** and the CSV supplied with the assessment. Node 
 ```bash
 git clone https://github.com/HEPHAISTOS89/roadalyx.git
 cd roadalyx
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+python3 --version
 ```
+
+Check that the version is **3.12.x or 3.13.x** before creating the environment. If `python3` points to another version, use `python3.13` or `python3.12` in the command below instead. If neither is installed, install one first.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python --version                  # should still show 3.12.x or 3.13.x
+python -m pip install -r requirements.txt
+```
+
+On Windows, create the environment with `py -3.13 -m venv .venv` (or `py -3.12 -m venv .venv`). Activate it with `.\.venv\Scripts\Activate.ps1` in PowerShell, or `.venv\Scripts\activate.bat` in Command Prompt. Then run the same `python --version` and `python -m pip install -r requirements.txt` commands.
 
 **1. Clean the data.** Copy the supplied file into `data/raw/`, then run the pipeline. It prints the three required results and writes `data/processed/crashes.json.gz`.
 
@@ -102,7 +111,7 @@ The raw CSV and the processed file are not committed: the CSV is the lab's file 
 <details>
 <summary><b>Also:</b> the frontend and the EDA notebook</summary>
 
-To see the frontend on your machine, build it once while the API is running; then open <http://127.0.0.1:8000/>.
+**Keep the API running in the first terminal. Open a second terminal at the repository root** (`roadalyx/`) for the commands below. Build the frontend once, then open <http://127.0.0.1:8000/>. There is no need to restart the API after the build.
 
 ```bash
 npm --prefix web ci
@@ -112,7 +121,7 @@ npm --prefix web test              # 13 tests
 
 To change the frontend with live reload, keep the API running and start `npm --prefix web run dev` in a second terminal, then open <http://localhost:5173>.
 
-To re-run the notebook from scratch (it is already saved with its outputs):
+To re-run the notebook from scratch (it is already saved with its outputs), first activate `.venv` in this second terminal, as in the setup above:
 
 ```bash
 python -m nbconvert --to notebook --execute --inplace notebooks/eda.ipynb
