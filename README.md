@@ -1,43 +1,41 @@
 <p align="center">
-  <img src="docs/assets/roadalyx-mark.svg" width="64" height="64" alt="">
+  <img src="docs/assets/banner.svg" width="880" alt="Roadalyx — TxDOT CRIS crashes for the Lubbock District, cleaned in Python, served on AWS, explored on a map. 67,906 people · 24,261 injury crashes · 17 counties · 1 clean API on AWS.">
 </p>
-<h1 align="center">Roadalyx</h1>
-<p align="center">
-  TxDOT CRIS crash data for the Lubbock District, cleaned in Python,<br>
-  served by a REST API on AWS Lambda, explored on a map.
-</p>
+
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/"><b>Live application</b></a> ·
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs">API reference</a> ·
   <a href="notebooks/eda.ipynb">EDA notebook</a>
 </p>
+
 <p align="center">
   <a href="pyproject.toml"><img alt="Python 3.13" src="https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python&logoColor=white"></a>
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.162-009688?style=flat-square&logo=fastapi&logoColor=white"></a>
-  <a href="#deployment-on-aws"><img alt="AWS Lambda, Free Tier" src="https://img.shields.io/badge/AWS_Lambda-Free_Tier-FF9900?style=flat-square"></a>
+  <a href="#-deployment-on-aws"><img alt="AWS Lambda, Free Tier" src="https://img.shields.io/badge/AWS_Lambda-Free_Tier-FF9900?style=flat-square"></a>
   <a href="web/"><img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black"></a>
   <a href="tests/"><img alt="Tests: 101 Python and 25 frontend, passing" src="https://img.shields.io/badge/tests-101_%2B_25_passing-2EA44F?style=flat-square"></a>
 </p>
+
 <p align="center">
-  <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis">
-    <img src="docs/assets/analysis.jpg" width="880" alt="The Analysis page: filters for county, severity and years; totals of 24,261 injury crashes, 624 fatal and 1,546 suspected serious; a crash map of the 17 counties with a Location filter (intersection, segment, driveway) and the top corridors, led by Loop 289, US 62 and US 84; severity bars and the ranked contributing factors.">
+  <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/">
+    <img src="docs/assets/demo.gif" width="880" alt="Demo: the District map orbits the 17 counties in 3D while crashes build up from 2020 to 2026, then the Analysis page with its filters, crash map, severity bars and ranked factors.">
   </a>
 </p>
 
 I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The supplied CRIS export lists **67,906 people involved in 24,261 injury crashes** in the 17 counties of the TxDOT Lubbock District, from 1 January 2020 to 20 October 2026. A Python pipeline turns it into one clean record per crash, a FastAPI service answers questions about it, and both run on AWS within the Free Tier.
 
-## Contents
+## 🧭 Contents
 
-1. [Where to find each requirement](#where-to-find-each-requirement)
-2. [Run it locally](#run-it-locally)
-3. [The data: what I found and the three results](#the-data-what-i-found-and-the-three-results)
-4. [The API](#the-api)
-5. [Deployment on AWS](#deployment-on-aws)
-6. [Scope decisions](#scope-decisions)
-7. [Limitations and what I would do next](#limitations-and-what-i-would-do-next)
-8. [The frontend](#the-frontend)
+1. [Where to find each requirement](#-where-to-find-each-requirement)
+2. [Run it locally](#-run-it-locally)
+3. [The data: what I found and the three results](#-the-data-what-i-found-and-the-three-results)
+4. [The API](#-the-api)
+5. [Deployment on AWS](#-deployment-on-aws)
+6. [Scope decisions](#-scope-decisions)
+7. [Limitations and what I would do next](#-limitations-and-what-i-would-do-next)
+8. [The frontend](#-the-frontend)
 
-## Where to find each requirement
+## ✅ Where to find each requirement
 
 | Requirement | Where it is |
 |---|---|
@@ -49,7 +47,7 @@ I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The
 | **Tests** | [`tests/`](tests/): cleaning rules, API filters and errors, totals that must match across endpoints |
 | **Frontend** for a traffic safety analyst | [`web/`](web/) · [Analysis page](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis) |
 
-## Run it locally
+## 🚀 Run it locally
 
 You need **Python 3.12 or 3.13** and the CSV supplied with the assessment. Node 22.12+ is needed only for the frontend. Setup takes about a minute.
 
@@ -128,7 +126,7 @@ python -m nbconvert --to notebook --execute --inplace notebooks/eda.ipynb
 ```
 </details>
 
-## The data: what I found and the three results
+## 📊 The data: what I found and the three results
 
 **One row is a person, not a crash.** The export has 67,906 rows for 24,261 crashes: every driver, passenger and pedestrian gets a row, and the crash's fields are copied onto each of them. Counting rows would count a four-person crash four times. I checked that the copied crash fields never disagree inside a crash, then built one record per Crash ID. The result matches the export's own header (24,261 crashes).
 
@@ -204,7 +202,7 @@ The 624 fatal crashes killed 707 people. A crash can cite several factors, so fa
 
 I show this comparison in the EDA. I have not added a reportable-only filter to the API or portal.
 
-## The API
+## 🔌 The API
 
 FastAPI, read-only (`GET`), with the interactive reference at [`/api/docs`](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs). I designed the endpoints around the questions an analyst or a dashboard asks:
 
@@ -244,7 +242,7 @@ url = "https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/
 fatal_and_serious = pd.read_csv(f"{url}?format=csv&county=lubbock&severity=K,A")
 ```
 
-## Deployment on AWS
+## ☁️ Deployment on AWS
 
 <p align="center">
   <img src="docs/assets/architecture.svg" width="880" alt="Architecture. 1, publish the data: before deployment, python -m roadalyx turns the CRIS export (67,906 person rows) into crashes.json.gz (24,261 crashes); scripts/deploy.sh uploads it to a private S3 bucket. 2, serve a request: an analyst sends an HTTPS GET to the Lambda Function URL; Lambda runs FastAPI with Mangum, reads the dataset from S3 once per cold start, filters it in memory and returns JSON or CSV, writing one log line per request to CloudWatch Logs. An IAM role limits Lambda to that S3 object and its logs; CloudFormation creates the function, URL, role and log group.">
@@ -281,7 +279,8 @@ The cleaned dataset is small: 24,261 records, 0.9 MB compressed. Held in memory,
 
 The bucket is never public: only the function reads it, through its role.
 
-### Alternatives I did not use
+<details>
+<summary><b>Alternatives I did not use</b> — and why (EC2, databases, API Gateway, CloudFront, Glue)</summary>
 
 | Option | Why not here |
 |---|---|
@@ -291,7 +290,10 @@ The bucket is never public: only the function reads it, through its role.
 | S3 website and CloudFront for the frontend | A second origin to deploy and secure; Lambda already serves the built files from the same URL. |
 | Cleaning inside Lambda or Glue | The export arrives rarely and the cleaning needs pandas; running it on every cold start would be slower and dearer. |
 
-### Staying within the Free Tier
+</details>
+
+<details>
+<summary><b>Staying within the Free Tier</b> — the numbers, service by service</summary>
 
 | Service | Free allowance | This project |
 |---|---|---|
@@ -302,7 +304,10 @@ The bucket is never public: only the function reads it, through its role.
 
 There is no NAT gateway, database, load balancer or always-on instance. The account itself is on the AWS Free plan, which cannot generate a bill.
 
-### Security
+</details>
+
+<details>
+<summary><b>Security</b> — credentials, bucket, API and CSV safeguards</summary>
 
 - No credentials in the code: the deploy script uses the operator's AWS CLI session and fails without one.
 - Bucket: Block Public Access, server-side encryption, and a policy that refuses non-HTTPS requests.
@@ -310,6 +315,8 @@ There is no NAT gateway, database, load balancer or always-on instance. The acco
 - Every response carries a strict Content-Security-Policy, HSTS and `nosniff`. Errors are never cached; data answers are cached for 5 minutes.
 - CSV cells that start with `=`, `+`, `-` or `@` are escaped, so an export cannot run as a spreadsheet formula.
 - The raw CRIS file, which holds person-level records, is never uploaded or committed.
+
+</details>
 
 ### Deploy it yourself
 
@@ -319,7 +326,7 @@ scripts/deploy.sh                    # full deployment
 scripts/deploy.sh data               # after processing a new export: upload the data only
 ```
 
-`scripts/deploy.sh` needs the AWS CLI, Node 22.12+, `zip`, `rsync`, `curl` and the `.venv` from [Run it locally](#run-it-locally). It runs these steps and stops at the first failure:
+`scripts/deploy.sh` needs the AWS CLI, Node 22.12+, `zip`, `rsync`, `curl` and the `.venv` from [Run it locally](#-run-it-locally). It runs these steps and stops at the first failure:
 
 1. **Test.** Run the Python tests.
 2. **Build.** Build the frontend into `roadalyx/web`.
@@ -328,19 +335,19 @@ scripts/deploy.sh data               # after processing a new export: upload the
 5. **Deploy.** Create or update the CloudFormation stack.
 6. **Check.** Call `/api/health` and print the public URL.
 
-## Scope decisions
+## 🎯 Scope decisions
 
 I prioritized the three required results: count crashes rather than person rows, split the factor lists correctly, and mark the partial year. The notebook and tests check those results against the export. I kept the supplied scope and used the EDA to show how excluding non-reportable crashes would change the ranking, rather than adding another portal filter.
 
 I use one filter implementation for the aggregate and search endpoints, one Lambda function reading one file, and a frontend built on the same API. I did not add user accounts or a database. I left rate limiting out of this assessment and would add it before wider public use.
 
-## Limitations and what I would do next
+## 🧱 Limitations and what I would do next
 
 - The export only has injury crashes (K, A, B, C), so the totals are not all crashes.
 - Without traffic volumes, I can say where crashes happen and how severe they are, but not which road is the most dangerous. With TxDOT's traffic counts (AADT), I would compute crash rates per road segment.
 - The last months may still grow: the data ends on 20 October 2026 and crash reports keep arriving.
 
-## The frontend
+## 🖥️ The frontend
 
 A React frontend in [`web/`](web/), served by the same Lambda function and built only on the public API. It has two pages:
 
@@ -348,12 +355,18 @@ A React frontend in [`web/`](web/), served by the same Lambda function and built
 - **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/district-map)**, a 3D view of the 17 counties, with their roads and towns from Census TIGER/Line, where the crashes build up month by month from 2020 to 2026. Clicking a county opens its figures and a link to the Analysis page.
 
 <p align="center">
+  <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis">
+    <img src="docs/assets/analysis.jpg" width="880" alt="The Analysis page: filters for county, severity and years; totals of 24,261 injury crashes, 624 fatal and 1,546 suspected serious; a crash map of the 17 counties with a Location filter (intersection, segment, driveway) and the top corridors, led by Loop 289, US 62 and US 84; severity bars and the ranked contributing factors.">
+  </a>
+</p>
+
+<p align="center">
   <img src="docs/assets/district-map.jpg" width="880" alt="The District map: the 17 counties in 3D, with every located crash drawn as a light and fatal and serious crashes as red and orange posts, a timeline from 2020 to 2026, and counts of K, A, B and C crashes.">
 </p>
 
 Charts have text equivalents (tooltips and data tables), work with the keyboard, and respect the reduced-motion setting.
 
-## Repository layout
+## 🗂️ Repository layout
 
 ```
 roadalyx/            Python package
@@ -374,5 +387,9 @@ data/raw/            put district_crashes.csv here (not committed)
 ```
 
 ---
+
+<p align="center">
+  <img src="docs/assets/footer.svg" width="880" alt="">
+</p>
 
 <sub>Data: TxDOT Crash Records Information System (CRIS), query export supplied by TransTech Lab; TxDOT makes no warranty as to the accuracy of CRIS data. County boundaries: US Census Bureau, via `us-atlas`. District map roads, water and town limits: US Census Bureau TIGER/Line 2024, built with `scripts/build_roads.py`. Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors.</sub>
