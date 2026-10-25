@@ -1,3 +1,4 @@
+// Display formatting for API values: counts, shares, CRIS labels, TxDOT route codes and dates.
 const n0 = new Intl.NumberFormat('en-US');
 export const int = (v: number | null | undefined) => (v == null ? '–' : n0.format(v));
 export const pct = (v: number | null | undefined, digits = 1) => (v == null ? '–' : `${(v * 100).toFixed(digits)}%`);
@@ -21,6 +22,8 @@ export function road(v: string | null | undefined) {
 }
 /** A street filter slug back to its name: 'us0084' -> 'US 84', 'slide-rd' -> 'Slide Rd'. */
 export const streetName = (s: string) => road(s.toUpperCase().replace(/-/g, ' '));
+// CRIS county names are upper case: LUBBOCK -> Lubbock.
 export const county = (v: string | null | undefined) => (v ? v.charAt(0) + v.slice(1).toLowerCase() : '–');
+// Parsed at local noon so the date does not shift by a day across time zones.
 export const dateLong = (iso: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });

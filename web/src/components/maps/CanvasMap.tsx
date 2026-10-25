@@ -1,3 +1,5 @@
+// The 2D map drawn on a Canvas, used where WebGL is missing or the GPU context is lost. It serves both
+// the Analysis map (click a crash to open it) and the district page (click a county; timeline via maxDay).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowsOutIcon, CornersInIcon, MinusIcon, PlusIcon, ArrowCounterClockwiseIcon } from '@phosphor-icons/react';
 import { county as countyLabel, int } from '../../lib/format';
@@ -28,6 +30,7 @@ export default function CanvasMap({ points, selected, onSelect, county, onCounty
   const theme = useTheme();
   const indices = useMemo(() => visibleIndices(points, maxDay), [points, maxDay]);
   const coordinates = useMemo(() => points?.lon.map((lon, i) => project2d(lon, points.lat[i])) ?? [], [points]);
+  // What to frame: the picked county, a fixed camera view, or the crashes in the selection.
   const bounds = useMemo(() => county ? (countyShapes.find((c) => c.name === county)?.bounds ?? districtBounds)
     : view === 'lubbock' ? lubbockBounds : view === 'district' ? districtBounds : pointBounds(points), [points, county, view]);
   const fit = () => setCamera(fitMap(bounds, size.width, size.height, onCounty ? 100 : 48));
@@ -47,6 +50,7 @@ export default function CanvasMap({ points, selected, onSelect, county, onCounty
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
+    // Attached by hand: React wheel listeners are passive, and the page must not scroll while zooming.
     const wheel = (e: WheelEvent) => { e.preventDefault(); zoom(e.deltaY < 0 ? 1.2 : 1 / 1.2); };
     el.addEventListener('wheel', wheel, { passive: false });
     return () => el.removeEventListener('wheel', wheel);
@@ -63,6 +67,7 @@ export default function CanvasMap({ points, selected, onSelect, county, onCounty
   useEffect(() => {
     const el = canvas.current;
     if (!el || !size.width || !size.height) return;
+    // The whole map is redrawn on every change: county fills and outlines, then the crashes, then labels.
     const ctx = el.getContext('2d');
     if (!ctx) { setUnavailable(true); return; }
     const { width, height } = size;
@@ -111,6 +116,7 @@ export default function CanvasMap({ points, selected, onSelect, county, onCounty
         } else return;
         e.preventDefault();
       }}
+      // Drag pans; a press that moves less than 4 px is a click, which picks a crash or a county.
       onPointerDown={(e) => {
         if (e.button !== 0 || drag.current) return;
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -134,6 +140,7 @@ export default function CanvasMap({ points, selected, onSelect, county, onCounty
         if (onSelect && points) onSelect(nearestPoint(points, indices, target, 9 / camera.scale));
         else onCounty?.(countyAt(target));
       }} />
+    {/* On the district page, each county is also a real button, for keyboard and screen-reader users. */}
     {onCounty && countyShapes.map((c) => <button key={c.name} type="button" className="canvas-county"
       aria-label={`${countyLabel(c.name)} County`} aria-pressed={county === c.name}
       style={{ left: (c.center[0] - camera.x) * camera.scale + size.width / 2, top: (c.center[1] - camera.y) * camera.scale + size.height / 2,

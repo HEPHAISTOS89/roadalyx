@@ -1,3 +1,4 @@
+// A single shared tooltip for the charts, so hovering many bars never mounts many popups.
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 
 interface Tip { x: number; y: number; content: ReactNode }
@@ -6,6 +7,7 @@ const Ctx = createContext<(t: Tip | null) => void>(() => {});
 /** One tooltip for the whole page, placed next to the pointer and kept inside the viewport. */
 export function TooltipLayer({ children }: { children: ReactNode }) {
   const [tip, setTip] = useState<Tip | null>(null);
+  // Near the right or bottom edge, the tooltip opens on the other side of the pointer.
   const flipX = tip && tip.x > window.innerWidth - 280;
   const flipY = tip && tip.y > window.innerHeight - 160;
   return (
@@ -21,6 +23,7 @@ export function TooltipLayer({ children }: { children: ReactNode }) {
   );
 }
 
+/** show(event, content) places the tooltip at the pointer; hide() removes it. */
 export function useTip() {
   const set = useContext(Ctx);
   const show = useCallback((e: { clientX: number; clientY: number }, content: ReactNode) => set({ x: e.clientX, y: e.clientY, content }), [set]);

@@ -1,3 +1,5 @@
+// The filter model of the Analysis page. Filters are parsed from and written back to the URL
+// query string, so a view can be bookmarked or sent as a link, and the same string goes to the API.
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { Sev } from './types';
@@ -18,6 +20,7 @@ export const slug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, '-').r
 const list = (v: string | null) => (v ? [...new Set(v.split(',').map(slug).filter(Boolean))] : []);
 const num = (v: string | null) => (v && /^\d{4}$/.test(v) ? Number(v) : null);
 
+/** Read filters from a query string, dropping anything malformed (unknown severities, non-4-digit years). */
 export function parseFilters(q: URLSearchParams): Filters {
   return {
     county: list(q.get('county')),
@@ -53,6 +56,7 @@ export function isEmpty(f: Filters) {
   return toQuery(f) === '';
 }
 
+/** The current filters and a setter that merges a partial change into the URL, replacing the history entry. */
 export function useFilters() {
   const [params, setParams] = useSearchParams();
   const filters = useMemo(() => parseFilters(params), [params]);
@@ -60,6 +64,7 @@ export function useFilters() {
     setParams((prev) => {
       const merged = { ...parseFilters(prev), ...next };
       const q = new URLSearchParams(toQuery(merged));
+      // keep parameters that are not filters, such as the open crash (?crash=)
       for (const [k, v] of prev) if (!['county', 'severity', 'road_class', 'vru', 'year_from', 'year_to', 'factor', 'street', 'location'].includes(k)) q.set(k, v);
       return q;
     }, { replace: true });

@@ -1,3 +1,5 @@
+// Entry point: fonts and styles, page-view tracking, and the two routes of the portal
+// (District map and Analysis) inside the shared header/footer shell and an error boundary.
 import { StrictMode, Suspense, lazy, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
@@ -16,6 +18,8 @@ installTracking();
 // Load the Analysis page (and its map) on demand so the landing page stays light.
 const Explorer = lazy(() => import('./pages/Explorer'));
 
+// Routes, wrapped so a failed page load shows a reload prompt instead of a blank screen;
+// resetKey clears that error when the visitor navigates elsewhere.
 function Pages() {
   const { pathname, search } = useLocation();
   useEffect(trackPage, [pathname, search]);

@@ -1,3 +1,5 @@
+// The filter bar at the top of the Analysis page: county, KABCO severity and year range always
+// visible; road class, contributing factor and road users under "More".
 import { useId, useState } from 'react';
 import { ArrowCounterClockwiseIcon, CaretDownIcon, FunnelIcon } from '@phosphor-icons/react';
 import Picker from './Picker';
@@ -6,7 +8,9 @@ import { county, title } from '../../lib/format';
 import { isEmpty, NO_FILTERS, type Filters } from '../../lib/filters';
 import { SEVS, type Meta, type Sev } from '../../lib/types';
 
+// KABCO, as coded in CRIS: K fatal, A suspected serious injury, B suspected minor, C possible injury.
 const SEV_NAME: Record<Sev, string> = { K: 'Fatal', A: 'Susp. serious', B: 'Susp. minor', C: 'Possible' };
+// Vulnerable road users, matched to the API `vru` values.
 const VRU = [
   { value: 'pedestrian', label: 'Pedestrian' },
   { value: 'pedalcyclist', label: 'Cyclist' },
@@ -15,6 +19,7 @@ const VRU = [
 
 interface Props { meta: Meta; filters: Filters; set: (f: Partial<Filters>) => void }
 
+/** Every change goes through `set`, which writes the URL; the page re-fetches from there. */
 export default function FilterBar({ meta, filters, set }: Props) {
   const years = meta.filters.year;
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -38,6 +43,7 @@ export default function FilterBar({ meta, filters, set }: Props) {
           ))}
         </Seg>
 
+        {/* An empty value means the first (or last) year of the data; the range is kept ordered, from <= to. */}
         <div className="years">
           <label>
             <span className="sr-only">From year</span>

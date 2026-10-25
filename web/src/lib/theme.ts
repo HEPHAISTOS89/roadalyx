@@ -1,3 +1,4 @@
+// Light/dark theme: React reads it from the <html> attribute, so the map and 3D scene can rebuild on a switch.
 import { useSyncExternalStore } from 'react';
 
 export type Theme = 'light' | 'dark';
@@ -12,6 +13,7 @@ const subscribe = (cb: () => void) => {
 
 export const useTheme = () => useSyncExternalStore(subscribe, read, () => 'light' as Theme);
 
+/** Apply and remember a theme, updating the browser chrome colour too. */
 export function setTheme(t: Theme) {
   const apply = () => {
     document.documentElement.dataset.theme = t;

@@ -1,3 +1,5 @@
+// The Analysis page: filter bar, key figures, map, charts, breakdown and the crash records, all
+// computed by the API on the same filters, which live in the URL so any view can be shared as a link.
 import { useCallback, useState } from 'react';
 import { UsersIcon } from '@phosphor-icons/react';
 import { useSearchParams } from 'react-router-dom';
@@ -13,10 +15,12 @@ import { county, int, pct, streetName, title } from '../lib/format';
 import type { BreakdownRes, FactorsRes, HeatmapRes, Meta, Points, SeverityRes, TrendRes } from '../lib/types';
 import '../styles/explorer.css';
 
+// Time axes of the trend chart.
 const AXES = [
   { by: 'year', label: 'Year' }, { by: 'month', label: 'Month' },
   { by: 'hour', label: 'Hour of day' }, { by: 'weekday', label: 'Day of week' },
 ] as const;
+// Crash location (HSM: intersection vs segment), worded for the scope line, the buttons and their tooltips.
 const PLACE: Record<Location, string> = { intersection: 'at intersections', segment: 'on segments', driveway: 'at driveways' };
 const PLACE_LABEL: Record<Location, string> = { intersection: 'Intersection', segment: 'Segment', driveway: 'Driveway' };
 const PLACE_HELP: Record<Location, string> = {
@@ -47,6 +51,7 @@ function Scope({ meta, total, located }: { meta: Meta; total: number | null; loc
         <button key={st} type="button" className="scope-chip" onClick={() => set({ street: f.street.filter((x) => x !== st) })}
           aria-label={`Remove the ${streetName(st)} filter`}>on {streetName(st)}<span aria-hidden="true">×</span></button>
       ))}
+      {/* Crashes without coordinates are still in every count; they just cannot be drawn on the map. */}
       {located != null && total != null && total > located
         ? <span title="Counted in every figure; without coordinates, they cannot be drawn."> · {int(total - located)} not on the map (no location)</span> : null}
       {total === 0 && <span className="scope-empty"> · No crashes match.</span>}
@@ -59,6 +64,7 @@ export default function Explorer() {
   const [params, setParams] = useSearchParams();
   const [axis, setAxis] = useState<(typeof AXES)[number]['by']>('year');
   const [metric, setMetric] = useState<'crashes' | 'ka_crashes'>('crashes');
+  // One request per panel, each with the same filter query; the breakdowns below drop one filter on purpose.
   const meta = useApi<Meta>('/api/v1/meta');
   const sev = useApi<SeverityRes>(api('/severity', query));
   const pts = useApi<Points>(api('/points', query));
@@ -67,14 +73,15 @@ export default function Explorer() {
   const heat = useApi<HeatmapRes>(api('/heatmap', query));
   // Corridors are ranked on the selection without the street filter, so the list stays to choose from.
   const corridors = useApi<BreakdownRes>(api('/breakdown', toQuery({ ...filters, street: [] }), 'by=street&limit=9'));
-  // Crashes per location on the selection without the location filter, shown on each button.
   // Crashes per county on the selection without the county filter, for the map's county hover.
   const byCounty = useApi<BreakdownRes>(api('/breakdown', toQuery({ ...filters, county: [] }), 'by=county'));
+  // Crashes per location on the selection without the location filter, shown on each button.
   const places = useApi<BreakdownRes>(api('/breakdown', toQuery({ ...filters, location: null }), 'by=intersection'));
   const placeCount = (l: Location | null) => places.data?.groups
     .filter((g) => (l ? PLACE_VALUES[l] : Object.values(PLACE_VALUES).flat()).includes(String(g.value)))
     .reduce((n, g) => n + g.crashes, 0);
 
+  // The open crash is in the URL too (?crash=id), so a link can point at one record.
   const selected = params.get('crash') ? Number(params.get('crash')) : null;
   const select = useCallback((id: number | null) => setParams((p) => {
     const q = new URLSearchParams(p);
@@ -100,6 +107,7 @@ export default function Explorer() {
           {(sev.error || pts.error) && <p className="error-box">{sev.error || pts.error}</p>}
         </div>
 
+        {/* Key figures. K and A sit together: K+A (fatal plus suspected serious injury) is the usual severe-crash measure. */}
         <dl className="kpis rise" style={{ '--i': 1 } as React.CSSProperties} aria-label="Key figures" aria-busy={sev.loading}>
           <div><dt>Injury crashes</dt><dd><b className="num"><Rolling text={int(s?.total)} /></b></dd></div>
           <div>
@@ -115,6 +123,7 @@ export default function Explorer() {
           <div><dt>K + A share</dt><dd><b className="num"><Rolling text={pct(s?.ka_share)} /></b></dd></div>
         </dl>
 
+        {/* Where: the map with its location toggle, then severity and contributing factors. Clicking a bar filters the page. */}
         <div className="grid-main rise" style={{ '--i': 2 } as React.CSSProperties}>
           <section className="panel map-panel" aria-labelledby="map-h">
             <div className="panel-head">
@@ -160,6 +169,7 @@ export default function Explorer() {
           </div>
         </div>
 
+        {/* When: crashes over time and by day and hour. */}
         <div className="grid-when rise" id="when" style={{ '--i': 3 } as React.CSSProperties}>
           <section className="panel" aria-labelledby="trend-h" aria-busy={trend.loading}>
             <div className="panel-head">

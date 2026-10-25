@@ -1,3 +1,6 @@
+// The Analysis map: MapLibre over an OpenFreeMap basemap, with the crashes of the current selection,
+// a density view, the highway network with route shields, a 3D tilt, county hover/filter and the
+// top-corridors list. Falls back to the Canvas 2D map without WebGL 2 or when the basemap fails.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Map as MlMap, NavigationControl, FullscreenControl, Popup, ScaleControl, setWorkerUrl, type GeoJSONSource, type MapLayerMouseEvent, type StyleSpecification } from 'maplibre-gl';
 // MapLibre 6 runs tile parsing in a module worker; let Vite bundle it so the production build ships it.
@@ -14,6 +17,7 @@ import { slug } from '../../lib/filters';
 import { county, int, pct, road } from '../../lib/format';
 import { useTheme, type Theme } from '../../lib/theme';
 
+// Lubbock District extent (lon, lat), the first view.
 const DISTRICT: [[number, number], [number, number]] = [[-103.07, 32.52], [-101.04, 34.75]];
 const SEV_NAME: Record<string, string> = { K: 'Fatal', A: 'Suspected serious injury', B: 'Suspected minor injury', C: 'Possible injury' };
 type Mode = 'crashes' | 'hotspots';
@@ -102,6 +106,7 @@ function SHIELDS() {
 const sevColor = (P: Palette) => ['match', ['get', 's'], 'K', P.sev[0], 'A', P.sev[1], 'B', P.sev[2], P.sev[3]];
 
 setWorkerUrl(workerUrl);
+// With reduced motion, camera moves jump instead of easing and the selected crash does not pulse.
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const styles: Partial<Record<Theme, Promise<StyleSpecification>>> = {};
@@ -167,6 +172,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
   // The ranking opens on demand, so the map is seen whole first.
   const [showRoads, setShowRoads] = useState(false);
   const corridor = hoverRoad && points?.streets ? points.streets.indexOf(hoverRoad) : null;
+  // Map event handlers are bound once per map; refs give them the latest props without rebinding.
   const pointsRef = useRef(points);
   pointsRef.current = points;
   const countyRef = useRef({ byCounty, onCounty });
@@ -184,6 +190,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
 
   useEffect(() => {
     if (failed) return;
+    // Build the map: basemap style, controls, then every source and layer once the style has loaded.
     let m: MlMap | null = null;
     let ro: ResizeObserver | null = null;
     let live = true;
@@ -221,6 +228,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
         m!.setSky({ ...P.sky,
           'sky-horizon-blend': 0.7, 'horizon-fog-blend': 0.8, 'fog-ground-blend': 0.6, 'atmosphere-blend': 0 });
         for (const [name, img] of Object.entries(SHIELDS())) m!.addImage(name, img.data, img.opts);
+        // County outlines; the invisible fill is the hover/click target, county-on the hover highlight.
         m!.addSource('counties', { type: 'geojson', data: counties as FeatureCollection });
         m!.addLayer({ id: 'county-fill', type: 'fill', source: 'counties', paint: { 'fill-color': P.ring, 'fill-opacity': 0 } });
         m!.addLayer({ id: 'county-line', type: 'line', source: 'counties', paint: { 'line-color': P.county, 'line-width': 1 } });
@@ -261,6 +269,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
             'fill-extrusion-opacity': 0.85,
           },
         });
+        // Crash points and their density surface share one source, filled by the data effect below.
         m!.addSource('crashes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         m!.addLayer({
           id: 'density', type: 'heatmap', source: 'crashes', maxzoom: 13, layout: { visibility: 'none' },
@@ -287,12 +296,13 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
             'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0, 12, 1] as never,
           },
         });
-        // Route numbers (I 27, US 84, SH 114…) above the points, so they stay readable over a dense corridor.
+        // Close in, a mark holding 3 or more crashes shows their number.
         m!.addLayer({
           id: 'crash-count', type: 'symbol', source: 'crashes', minzoom: 12, filter: ['>=', ['get', 'n'], 3],
           layout: { 'text-field': ['to-string', ['get', 'n']], 'text-font': ['Noto Sans Bold'], 'text-size': 10, 'text-allow-overlap': true },
           paint: { 'text-color': '#ffffff', 'text-halo-color': 'rgba(0,0,0,0.35)', 'text-halo-width': 1 },
         });
+        // Route numbers (I 27, US 84, SH 114…) above the points, so they stay readable over a dense corridor.
         m!.addLayer({
           id: 'route-label', type: 'symbol', source: 'openmaptiles', 'source-layer': 'transportation_name', minzoom: 6.5,
           filter: ['all', ['match', ['get', 'class'], ['motorway', 'trunk', 'primary'], true, false], ['has', 'ref']],
@@ -307,6 +317,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
           },
           paint: { 'text-color': ['match', ['get', 'network'], 'us-interstate', '#ffffff', '#151515'] as never },
         });
+        // The selected crash: a fixed ring, plus a halo the selection effect animates outwards.
         m!.addLayer({
           id: 'crash-halo', type: 'circle', source: 'crashes', filter: ['==', ['get', 'id'], -1],
           paint: { 'circle-radius': 11, 'circle-color': 'transparent', 'circle-stroke-color': P.ring, 'circle-stroke-width': 1.5, 'circle-stroke-opacity': 0 },
@@ -383,7 +394,9 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
     };
   }, [failed, theme]);
 
+  // First day of the data: the points carry day offsets from it, turned back into dates in the hover card.
   const start = useRef('2020-01-01');
+  // The corridor list, keyed by the same slug as the street filter.
   const corridors = useMemo(() => ranked.map((g) => ({
     raw: String(g.value), key: slug(String(g.value)), name: road(String(g.value)), crashes: g.crashes, ka: g.ka_share ?? 0,
   })), [ranked]);
@@ -391,6 +404,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
   useEffect(() => {
     const m = map.current;
     if (!ready || !m) return;
+    // Mode switch (Crashes / Density) and corridor hover, applied as paint changes without rebuilding layers.
     m.setLayoutProperty('density', 'visibility', mode === 'hotspots' ? 'visible' : 'none');
     // A corridor under the pointer keeps its crashes and fades the rest, in both views.
     const on = corridor != null && corridor >= 0 ? ['==', ['get', 'st'], corridor] : null;
@@ -421,12 +435,14 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
   });
   useEffect(() => () => cancelAnimationFrame(spin.current), []);
 
+  // The 3D button: tilt and turn the camera so building heights show.
   useEffect(() => {
     const m = map.current;
     if (!ready || !m) return;
     m.easeTo({ pitch: tilted ? 55 : 0, bearing: tilted ? -17 : 0, duration: reduced() ? 0 : 900 });
   }, [ready, tilted]);
 
+  // New selection from the API: rebuild the crash features and frame them.
   useEffect(() => {
     if (!ready || !map.current) return;
     if (!points) {
@@ -460,6 +476,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
   useEffect(() => {
     const m = map.current;
     if (!ready || !m) return;
+    // Ring the selected crash and fly to it.
     m.setFilter('crash-selected', ['==', ['get', 'id'], selected ?? -1]);
     m.setFilter('crash-halo', ['==', ['get', 'id'], selected ?? -1]);
     if (selected == null || !points) return;
@@ -482,6 +499,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
   useEffect(() => {
     const m = map.current;
     if (!ready || !m) return;
+    // Counties in the filter get a heavier outline.
     m.setPaintProperty('county-line', 'line-width', ['case', ['in', ['downcase', ['get', 'name']], ['literal', pickedCounties]], 2, 1]);
   }, [ready, pickedCounties]);
 
@@ -489,6 +507,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
 
   return (
     <div className="map" ref={el} role="region" aria-label="Crash map. Click a crash mark to open its record; the records table below lists the same crashes.">
+      {/* Overlays on the map: legend and count, the corridors list, view toggles and the 3D camera pad. */}
       <ul className="map-legend" aria-label="Map legend">
         <li className="map-sum" aria-live="polite"><b className="num">{int(shown.all)}</b> on the map<span className="num">· {int(shown.K)} K · {int(shown.A)} A</span></li>
         {mode === 'hotspots'

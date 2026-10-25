@@ -2,6 +2,10 @@
 
 Pure Python on purpose: the same functions run in the CLI report, the tests and the
 Lambda API, and the API does not need pandas at runtime.
+
+Every function takes a list of crash records (already filtered by the API when a selection is
+made) and returns plain dicts that the API returns as JSON. Counts are of crashes, not of people:
+a crash with three injured people counts once.
 """
 
 from __future__ import annotations
@@ -19,17 +23,21 @@ SEVERITY_LABELS = {
 }
 # Tokens that record the absence of a coded cause, not a cause: kept in the data, left out of rankings.
 NON_CAUSAL_FACTORS = {"NONE", "OTHER (EXPLAIN IN NARRATIVE)"}
+# Time axes the trend endpoint accepts (/api/v1/trends?by=...).
 TREND_AXES = ("year", "month", "hour", "weekday")
+# Crash attributes the breakdown endpoint can group by (/api/v1/breakdown?by=...).
 BREAKDOWN_FIELDS = ("county", "road_class", "rural", "weather", "collision", "first_event",
                     "intersection", "speed_limit", "street")
 
 
 def _by_severity(crashes) -> dict[str, int]:
+    """Crashes per KABCO code, with a zero for a code that does not occur."""
     counts = Counter(c["severity"] for c in crashes)
     return {s: counts.get(s, 0) for s in SEVERITIES}
 
 
 def _ka_share(counts: dict[str, int], total: int) -> float | None:
+    """Share of crashes that are fatal or suspected serious injury (K+A), the usual severe-crash measure."""
     return round((counts["K"] + counts["A"]) / total, 4) if total else None
 
 
@@ -56,6 +64,7 @@ def top_factors(crashes: list[dict], limit: int = 5) -> dict:
     A crash can list several factors, so shares do not add up to 100 %.
     """
     total = len(crashes)
+    # For each factor: how many crashes cite it, and how many of those are K or A.
     crashes_with = Counter()
     severe_with = Counter()
     for c in crashes:
@@ -65,6 +74,7 @@ def top_factors(crashes: list[dict], limit: int = 5) -> dict:
             crashes_with[f] += 1
             if c["severity"] in ("K", "A"):
                 severe_with[f] += 1
+    # Crashes whose only entries are NONE or OTHER: reported, so the ranking's base is visible.
     no_coded_factor = sum(1 for c in crashes if not set(c["factors"]) - NON_CAUSAL_FACTORS)
     return {
         "total": total,
@@ -80,6 +90,7 @@ def top_factors(crashes: list[dict], limit: int = 5) -> dict:
 
 
 def _months(start: date, end: date):
+    """Every month from start to end as 'YYYY-MM', so a month with no crash still gets a bucket."""
     y, m = start.year, start.month
     while (y, m) <= (end.year, end.month):
         yield f"{y}-{m:02d}"
@@ -106,6 +117,8 @@ def trend(crashes: list[dict], by: str, coverage: tuple[date, date]) -> dict:
         raise ValueError(f"by must be one of {TREND_AXES}")
     start, end = coverage
 
+    # Each axis defines: its buckets, which bucket a crash falls in, a label, and whether the
+    # data covers the bucket fully (2026 stops in October, so it is flagged as a partial year).
     if by == "year":
         keys = list(range(start.year, end.year + 1))
         key = lambda c: c["year"]
@@ -127,6 +140,7 @@ def trend(crashes: list[dict], by: str, coverage: tuple[date, date]) -> dict:
         label = lambda k: calendar.day_name[k]
         complete = lambda k: True
 
+    # Crashes with no usable value on this axis (a missing time, for the hour axis) are counted apart.
     buckets = {k: [] for k in keys}
     unknown = 0
     for c in crashes:
@@ -174,5 +188,6 @@ def breakdown(crashes: list[dict], by: str, limit: int | None = None) -> dict:
         rows.append({"value": value, "crashes": len(group), **counts,
                      "ka_share": _ka_share(counts, len(group)),
                      "deaths": sum(c["deaths"] for c in group)})
+    # Largest groups first; an unknown value (None) always goes last, whatever its size.
     rows.sort(key=lambda r: (r["value"] is None, -r["crashes"], str(r["value"])))
     return {"by": by, "total": len(crashes), "groups": rows[:limit] if limit else rows}

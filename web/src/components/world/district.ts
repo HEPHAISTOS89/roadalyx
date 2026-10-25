@@ -82,6 +82,7 @@ export interface World {
   dispose(): void;
 }
 
+// Shaders. uDay is the timeline date shared by points, posts and rings: anything dated after it is hidden.
 const POINT_VS = /* glsl */ `
   attribute float sev;
   attribute float day;
@@ -215,11 +216,13 @@ const STAR_FS = /* glsl */ `
   void main() { gl_FragColor = vec4(vec3(0.78, 0.8, 0.86), vA * 0.5); }
 `;
 
+// Camera presets for the District and Lubbock buttons (radius in km, angles in radians).
 const VIEWS = {
   district: { target: new THREE.Vector3(0, 0, -2), radius: 330, polar: 1.02, azimuth: -0.3 },
   lubbock: { target: project(-101.875, 33.565), radius: 58, polar: 1.02, azimuth: -0.42 },
 };
 
+/** Build the scene inside `host` and start rendering; the returned handle is how React drives it. */
 export function createWorld(o: WorldOptions): World {
   const { host, labels, points, still } = o;
   const C = o.light ? PALETTES.day : PALETTES.night;
@@ -402,6 +405,7 @@ export function createWorld(o: WorldOptions): World {
   const sev = new Float32Array(n);
   const day = new Float32Array(n);
   const phase = new Float32Array(n);
+  // C first, K last, so the severe crashes are drawn over the minor ones.
   const order = [...Array(n).keys()].sort((a, b) => SEV_INDEX[points.severity[b]] - SEV_INDEX[points.severity[a]]);
   order.forEach((src, i) => {
     const v = project(points.lon[src], points.lat[src]);
@@ -592,6 +596,7 @@ export function createWorld(o: WorldOptions): World {
     camera.lookAt(target);
   };
 
+  // Render loop state. `dirty` means something changed: with nothing moving, no frame is drawn.
   let playing = false;   // timeline and orbit together: one pause control stops all motion
   let holdUntil = 0;
   let idleSince = -Infinity;
@@ -736,6 +741,7 @@ export function createWorld(o: WorldOptions): World {
   const DAYS_PER_SECOND = lastDay / 22; // six years in about twenty-two seconds
   const v = new THREE.Vector3();
 
+  // One frame: advance the timeline and orbit, ease the camera, render, then place the HTML labels.
   const frame = (now: number) => {
     raf = requestAnimationFrame(frame);
     const dt = Math.min((now - last) / 1000, 0.1);
@@ -793,6 +799,7 @@ export function createWorld(o: WorldOptions): World {
   place();
   raf = requestAnimationFrame(frame);
 
+  // The World handle used by Hero.tsx.
   return {
     setDay(d) { uniforms.uDay.value = d; holdUntil = 0; dirty = true; },
     play() {
@@ -834,6 +841,7 @@ export function createWorld(o: WorldOptions): World {
       if (a) { last = performance.now(); dirty = true; raf = requestAnimationFrame(frame); }
       else cancelAnimationFrame(raf);
     },
+    // Free every GPU resource: the page can rebuild the scene (theme switch) many times in a session.
     dispose() {
       disposed = true;
       cancelAnimationFrame(raf);

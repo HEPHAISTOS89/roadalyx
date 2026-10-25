@@ -1,3 +1,6 @@
+// The district map page: the 3D night view of every located crash (district.ts), its timeline
+// HUD, county figures on click, and the Canvas 2D fallback. React owns the controls; district.ts
+// owns the WebGL scene and reports back through callbacks.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRightIcon, CornersInIcon, CornersOutIcon, PauseIcon, PlayIcon, XIcon } from '@phosphor-icons/react';
@@ -50,6 +53,7 @@ export default function Hero() {
   const section = useRef<HTMLElement>(null);
   const countyPanel = useRef<HTMLElement>(null);
   const world = useRef<World | null>(null);
+  // "still" follows the OS reduced-motion setting live: no orbit, no autoplay.
   const [still, setStill] = useState(reduced);
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -77,6 +81,7 @@ export default function Hero() {
   useEffect(() => { world.current?.setMode(mode); setCell(null); }, [mode]);
   const pickCounty = useCallback((name: string | null) => { setTouched(true); setPicked(name); }, []);
 
+  // Sorted crash days, overall and per severity, so the HUD counts "crashes through this date" by binary search.
   const days = useMemo(() => {
     if (!pts.data) return null;
     const all: number[] = [];
@@ -90,6 +95,7 @@ export default function Hero() {
   }, [pts.data]);
 
   useEffect(() => {
+    // Create the 3D scene once the points are in; rebuilt on a theme or reduced-motion change.
     if (!pts.data || !gl || failed || !host.current || !labels.current) return;
     let w: World;
     let lastPush = 0;
@@ -98,6 +104,7 @@ export default function Hero() {
         host: host.current, labels: labels.current, points: pts.data, still, light,
         onDay: (d) => {
           const now = performance.now();
+          // the scene reports every frame; React re-renders the HUD at most every 60 ms
           if (now - lastPush > 60) { lastPush = now; setDay(d); }
         },
         onHover: (name, x, y, road) => setTip(name || road ? { name, road, x, y } : null),
@@ -115,6 +122,7 @@ export default function Hero() {
     w.setMode(modeRef.current);
     if (!still) w.play();
     setPlaying(!still);
+    // Stop rendering when the map is scrolled away or the tab is hidden.
     let inView = true;
     const sync = () => w.setActive(inView && !document.hidden);
     const io = new IntersectionObserver(([e]) => { inView = e.isIntersecting; sync(); });
@@ -156,6 +164,7 @@ export default function Hero() {
     return () => document.removeEventListener('keydown', key);
   }, [picked]);
 
+  // Play/pause and the slider drive the 3D scene, or the fallback timer when there is no WebGL.
   const shownDay = Math.min(day ?? days?.last ?? 0, days?.last ?? 0);
   const date = days ? new Date(days.start.getTime() + shownDay * 864e5) : null;
   const toggle = () => {
@@ -198,6 +207,7 @@ export default function Hero() {
     else void section.current.requestFullscreen().catch(() => setFake(true));
   };
   const isFull = full || fake;
+  // County figures for the hover tip and the open county panel come from one /breakdown?by=county call.
   const go = (v: 'district' | 'lubbock') => { setPicked(null); setView(v); world.current?.view(v); };
   const stat = (name: string | null) => (name ? byCounty.data?.groups.find((g) => g.value === name) : undefined);
   const hover = tip ? stat(tip.name) : undefined;
@@ -236,6 +246,7 @@ export default function Hero() {
         {!broken && pts.data && !touched && <p className="hero-hint" aria-hidden="true">{fallback ? 'Drag to pan · select a county' : coarse ? 'Drag to rotate · tap a county' : 'Drag to rotate · scroll to zoom · click a county'}</p>}
       </div>
 
+      {/* Title, headline count and the way into the Analysis page. */}
       <div className="hero-copy">
         <h1 id="hero-h" className="hero-title">Lubbock District, crash by crash</h1>
         <p className="hero-context">
@@ -246,6 +257,7 @@ export default function Hero() {
         </div>
       </div>
 
+      {/* Camera presets, full screen, and the figures of the picked county. */}
       <div className="hero-side">
         <Seg className="hero-views" role="group" aria-label="Camera">
           <button type="button" aria-pressed={view === 'district'} onClick={() => go('district')} disabled={broken}>District</button>
@@ -276,6 +288,7 @@ export default function Hero() {
         )}
       </div>
 
+      {/* Timeline: play/pause, a date slider, the running count, and the view switch with its legend. */}
       <div className="hero-hud">
         <button type="button" className="icon-btn" onClick={toggle} disabled={broken || !days}
           aria-label={playing ? 'Pause the animation' : 'Play the animation'}>

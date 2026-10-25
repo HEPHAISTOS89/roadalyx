@@ -1,3 +1,4 @@
+// Dropdown multi-select used by the county, road class and factor filters.
 import { useCallback, useId, useMemo, useRef, useState } from 'react';
 import { CaretDownIcon, CheckIcon } from '@phosphor-icons/react';
 import { useDismiss } from '../../lib/hooks';
@@ -29,6 +30,7 @@ export default function Picker({ label, choices, selected, onChange, multiple = 
     const needle = q.trim().toLowerCase();
     return needle ? choices.filter((c) => c.label.toLowerCase().includes(needle)) : choices;
   }, [choices, q]);
+  // Single-choice pickers (factor) close on pick and return focus to the button.
   const pick = (v: string) => {
     if (multiple) onChange(selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v]);
     else { onChange(selected[0] === v ? [] : [v]); close(); button.current?.focus(); }

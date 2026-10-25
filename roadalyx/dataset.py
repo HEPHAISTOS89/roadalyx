@@ -1,6 +1,8 @@
 """The processed dataset: crash records plus provenance, stored as one gzipped JSON file.
 
 The pipeline writes it once; the API reads it at start-up from a local path or from S3.
+About 900 KB compressed, it fits in Lambda memory, which is why the API needs no database:
+it loads the file on a cold start and answers every request from memory after that.
 """
 
 from __future__ import annotations
@@ -14,7 +16,9 @@ from datetime import date
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+# Bumped if the record layout changes, so an API never reads a file it does not understand.
 SCHEMA_VERSION = 1
+# Vulnerable road users, as flagged per crash by cris.build_crashes.
 VRU_TYPES = ("pedestrian", "pedalcyclist", "motorcyclist")
 
 
@@ -26,19 +30,24 @@ def slug(value) -> str:
 
 @dataclass
 class Dataset:
+    """The crash records in memory, checked once, with the lookups every request reuses."""
+
     crashes: list[dict]
     meta: dict
 
     def __post_init__(self):
+        # Refuse an empty or duplicated dataset rather than serve wrong totals.
         if not self.crashes:
             raise ValueError("The dataset contains no crash records.")
         if len({c["id"] for c in self.crashes}) != len(self.crashes):
             raise ValueError("The dataset contains a duplicate Crash ID.")
         dates = [c["date"] for c in self.crashes]
         self.coverage = (date.fromisoformat(min(dates)), date.fromisoformat(max(dates)))
+        # Direct lookup for /api/v1/crashes/{id}, the record behind a point on the map.
         self.by_id = {c["id"]: c for c in self.crashes}
         # Days since the first date, for timeline playback; computed once, not per request.
         self.day = {c["id"]: (date.fromisoformat(c["date"]) - self.coverage[0]).days for c in self.crashes}
+        # The valid value of each filter, served by /api/v1/meta so the portal's menus are built from the data.
         self.options = {
             "county": _choices(c["county"] for c in self.crashes),
             "road_class": _choices(c["road_class"] for c in self.crashes),
@@ -62,6 +71,7 @@ def _choices(values) -> list[dict]:
 
 
 def save(path: str | Path, crashes: list[dict], meta: dict) -> Path:
+    """Write the dataset as compact, gzipped JSON, replacing any previous file only once it is complete."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     body = {"schema_version": SCHEMA_VERSION, "meta": meta, "crashes": crashes}
@@ -90,6 +100,7 @@ def load(source: str) -> Dataset:
         raw = boto3.client("s3").get_object(Bucket=bucket, Key=key)["Body"].read()
     else:
         raw = Path(source).read_bytes()
+    # Same format either way: gzipped JSON with a schema version, the provenance and the records.
     body = json.loads(gzip.decompress(raw))
     if body.get("schema_version") != SCHEMA_VERSION:
         raise ValueError(f"{source}: schema version {body.get('schema_version')}, expected {SCHEMA_VERSION}")

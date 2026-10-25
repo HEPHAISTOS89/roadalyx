@@ -1,3 +1,5 @@
+// The tables of the Analysis page: Breakdown (crashes and severity by one attribute), Records
+// (the paginated crash list, with CSV export) and CrashCard (one crash in a modal dialog).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRightIcon, ArrowSquareOutIcon, CaretDownIcon, DownloadSimpleIcon, XIcon } from '@phosphor-icons/react';
 import { useApi } from '../../lib/api';
@@ -5,6 +7,7 @@ import { county, dateLong, int, pct, road, title } from '../../lib/format';
 import { api, slug } from '../../lib/filters';
 import type { BreakdownRes, Crash, CrashPage, Group } from '../../lib/types';
 
+// Attributes the Breakdown can group by. Those with `filter` map to a page filter, so their rows are clickable.
 export const DIMENSIONS = [
   { by: 'county', label: 'County', filter: 'county' as const },
   { by: 'road_class', label: 'Road class', filter: 'roadClass' as const },
@@ -18,6 +21,7 @@ export const DIMENSIONS = [
 type Dim = (typeof DIMENSIONS)[number];
 type SortKey = 'crashes' | 'K' | 'A' | 'ka_share' | 'deaths';
 
+// Display text for a group value; null means CRIS left the field blank.
 function valueLabel(by: string, v: Group['value']) {
   if (v == null) return 'Not recorded';
   if (by === 'county') return county(String(v));
@@ -35,6 +39,7 @@ export function Breakdown({ query, onFilter }: { query: string; onFilter: (key: 
     const g = [...(res.data?.groups ?? [])];
     return g.sort((a, b) => ((b[sort] ?? -1) as number) - ((a[sort] ?? -1) as number));
   }, [res.data, sort]);
+  // Each crash count gets an inline bar scaled to the largest group.
   const max = Math.max(...rows.map((r) => r.crashes), 1);
   const head = (key: SortKey, label: string) => (
     <th scope="col" aria-sort={sort === key ? 'descending' : 'none'} className="num-col">
@@ -100,6 +105,7 @@ export function Records({ query, total, onSelect, selected }: { query: string; t
   const [page, setPage] = useState(0);
   const [sort, setSort] = useState<'newest' | 'oldest' | 'severity'>('newest');
   const [lastQuery, setLastQuery] = useState(query);
+  // A new filter selection starts again at page 1 (reset during render, so no request goes out for a stale page).
   if (query !== lastQuery) { setLastQuery(query); setPage(0); }
   const res = useApi<CrashPage>(api('/crashes', query, `limit=${PAGE}&offset=${page * PAGE}&sort=${sort}`));
   const pages = Math.max(1, Math.ceil((res.data?.total ?? 0) / PAGE));
@@ -117,6 +123,7 @@ export function Records({ query, total, onSelect, selected }: { query: string; t
             </select>
             <CaretDownIcon size={14} aria-hidden="true" />
           </label>
+          {/* The CSV is every crash in the selection, not only this page. */}
           <a className="btn small" href={api('/crashes', query, 'format=csv')} download>
             <DownloadSimpleIcon aria-hidden="true" />CSV{total != null ? ` · ${int(total)}` : ''}
           </a>
@@ -170,6 +177,7 @@ export function CrashCard({ id, onClose }: { id: number; onClose: () => void }) 
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const el = dialog.current!;
+    // A native modal dialog: focus is trapped inside, and returns to the row that opened it on close.
     const opener = document.activeElement as HTMLElement | SVGElement | null;
     el.showModal();
     return () => {

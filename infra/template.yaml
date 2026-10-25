@@ -4,6 +4,7 @@ Description: >
   function URL. The processed dataset is read from a private S3 object at cold start.
   Free-tier services only: Lambda, S3, IAM, CloudWatch Logs.
 
+# Values scripts/deploy.sh passes on each deploy.
 Parameters:
   BucketName:
     Type: String
@@ -19,12 +20,15 @@ Parameters:
     Description: ETag of the dataset object. Changing it updates the function configuration, so new instances load the new data.
 
 Resources:
+  # Where the function's print() lines go: the access log and the portal events. Kept 14 days.
   ApiLogs:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: /aws/lambda/roadalyx-api
       RetentionInDays: 14
 
+  # The function's identity. Least privilege: write its own log group, read the one dataset object.
+  # It cannot list the bucket, read the code packages or write anywhere in S3.
   ApiRole:
     Type: AWS::IAM::Role
     Properties:
@@ -32,6 +36,7 @@ Resources:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
+          # Only the Lambda service can take on this role.
           - Effect: Allow
             Principal: { Service: lambda.amazonaws.com }
             Action: sts:AssumeRole
@@ -47,20 +52,22 @@ Resources:
                 Action: s3:GetObject
                 Resource: !Sub "arn:${AWS::Partition}:s3:::${BucketName}/${DataKey}"
 
+  # The whole application: FastAPI behind Mangum serves the API and the built React portal.
   Api:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: roadalyx-api
       Description: Roadalyx REST API and portal (FastAPI + Mangum)
       Runtime: python3.13
-      Architectures: [arm64]
+      Architectures: [arm64]  # Graviton: lower price per ms than x86
       Handler: roadalyx.api.handler
-      MemorySize: 1024
-      Timeout: 10
+      MemorySize: 1024  # Lambda scales CPU with memory: a faster cold start and dataset load
+      Timeout: 10  # requests take milliseconds; this only bounds a stuck one
       Role: !GetAtt ApiRole.Arn
       Code:
         S3Bucket: !Ref BucketName
         S3Key: !Ref CodeKey
+      # Where to read the data; DataVersion changes with the file, so a new upload means fresh instances.
       Environment:
         Variables:
           ROADALYX_DATA: !Sub "s3://${BucketName}/${DataKey}"
@@ -69,12 +76,14 @@ Resources:
         LogGroup: !Ref ApiLogs
         LogFormat: Text
 
+  # A public HTTPS address for the function, free, with no API Gateway in front.
   ApiUrl:
     Type: AWS::Lambda::Url
     Properties:
       TargetFunctionArn: !Ref Api
       AuthType: NONE
       InvokeMode: BUFFERED
+      # Other sites (a notebook, a dashboard) may read the API; the portal itself is same-origin.
       Cors:
         AllowOrigins: ["*"]
         AllowMethods: [GET]

@@ -1,5 +1,8 @@
+// Fetching from the Roadalyx API: a per-URL promise cache, and a hook that keeps each
+// response tied to the URL (that is, the filter selection) it was requested for.
 import { useEffect, useState } from 'react';
 
+// Several panels ask for the same URL (e.g. /meta); they share one request.
 const cache = new Map<string, Promise<unknown>>();
 
 /** GET a JSON endpoint once per URL; failed requests are evicted so a retry refetches. */
@@ -34,5 +37,6 @@ export function useApi<T>(url: string | null): Loaded<T> {
     );
     return () => { live = false; };
   }, [url]);
+  // In the render right after the URL changes, the effect has not run yet: report loading, not the old data.
   return url && state.url === url ? state : { data: null, error: null, loading: !!url };
 }

@@ -1,3 +1,4 @@
+// Small DOM hooks shared by the charts and the filter popovers.
 import { useEffect, useRef, useState } from 'react';
 
 /** Width of an element, kept current with a ResizeObserver (charts draw to it). */

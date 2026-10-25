@@ -1,3 +1,5 @@
+// Geometry for the Canvas 2D fallback map: a flat projection of the district, county outlines,
+// hit-testing, and framing of the camera on a set of bounds.
 import counties from '../data/counties.json';
 import type { Points } from './types';
 
@@ -12,6 +14,7 @@ export const countyShapes = counties.features.map((f) => {
   const bounds: Bounds = [[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]];
   return { name: f.properties.name, ring, bounds, center: [(bounds[0][0] + bounds[1][0]) / 2, (bounds[0][1] + bounds[1][1]) / 2] as XY };
 });
+/** County containing a projected point (ray-casting point-in-polygon on each outer ring). */
 export function countyAt([x, y]: XY) {
   for (const c of countyShapes) {
     let inside = false;
@@ -24,17 +27,20 @@ export function countyAt([x, y]: XY) {
   return null;
 }
 
+// Fixed frames for the "District" and "Lubbock" camera buttons.
 export const districtBounds: Bounds = [
   [Math.min(...countyShapes.map((c) => c.bounds[0][0])), Math.min(...countyShapes.map((c) => c.bounds[0][1]))],
   [Math.max(...countyShapes.map((c) => c.bounds[1][0])), Math.max(...countyShapes.map((c) => c.bounds[1][1]))],
 ];
 export const lubbockBounds: Bounds = [project2d(-102.03, 33.71), project2d(-101.69, 33.43)];
+/** Bounds of the crashes in the selection, or the whole district when none are located. */
 export function pointBounds(points: Points | null): Bounds {
   if (!points?.id.length) return districtBounds;
   const xy = points.lon.map((lon, i) => project2d(lon, points.lat[i]));
   return [[Math.min(...xy.map(([x]) => x)), Math.min(...xy.map(([, y]) => y))],
     [Math.max(...xy.map(([x]) => x)), Math.max(...xy.map(([, y]) => y))]];
 }
+/** Camera centre and scale (pixels per projected unit) that fit the bounds inside the padding. */
 export function fitMap(bounds: Bounds, width: number, height: number, padding = 48) {
   return {
     x: (bounds[0][0] + bounds[1][0]) / 2,
@@ -43,10 +49,12 @@ export function fitMap(bounds: Bounds, width: number, height: number, padding = 
       Math.max(1, height - padding * 2) / Math.max(0.035, bounds[1][1] - bounds[0][1])),
   };
 }
+/** Crashes up to the timeline day, ordered C, B, A, K so the severe ones are drawn last, on top. */
 export function visibleIndices(points: Points | null, maxDay = Infinity) {
   return points ? points.id.map((_, i) => i).filter((i) => points.day[i] <= maxDay)
     .sort((a, b) => 'CBAK'.indexOf(points.severity[a]) - 'CBAK'.indexOf(points.severity[b])) : [];
 }
+/** Id of the closest crash within the click radius, or null. */
 export function nearestPoint(points: Points, indices: number[], target: XY, radius: number) {
   let picked: number | null = null, distance = radius * radius;
   for (const i of indices) {

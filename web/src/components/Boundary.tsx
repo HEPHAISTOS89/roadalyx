@@ -1,3 +1,4 @@
+// Error boundary around every page.
 import { Component, type ReactNode } from 'react';
 
 /**

@@ -1,3 +1,5 @@
+// Page chrome shared by both pages: skip link, header with navigation and theme switch, and the
+// data-source footer (hidden on the full-screen district map).
 import { useEffect, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { GithubLogoIcon, MoonIcon, SunIcon } from '@phosphor-icons/react';
@@ -6,6 +8,7 @@ import { setTheme, useTheme } from '../lib/theme';
 
 export const REPO = 'https://github.com/HEPHAISTOS89/roadalyx';
 
+/** The logo: two converging road edges with a fatal-crash dot. */
 export function Mark({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
@@ -23,6 +26,7 @@ const TITLES: Record<string, string> = {
 export default function Shell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
   const theme = useTheme();
+  // A client-side route change does not reload the page: set the tab title and start at the top.
   useEffect(() => {
     document.title = TITLES[pathname] ?? 'Not found · Roadalyx';
     window.scrollTo(0, 0);

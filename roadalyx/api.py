@@ -4,8 +4,15 @@ Run locally:  uvicorn roadalyx.api:app --reload
 On AWS:       Lambda handler `roadalyx.api.handler` behind a Lambda function URL.
 
 Every data endpoint takes the same filters (county, severity, year_from, year_to,
-road_class, factor, vru) and echoes them back, so a number is never shown without
-the selection it was computed on.
+road_class, factor, vru, street, location) and echoes them back, so a number is never
+shown without the selection it was computed on.
+
+How a request is served:
+  Function URL -> Mangum (`handler`, bottom of this file) -> FastAPI route -> filters() validates
+  the query -> Filters.apply() selects crashes from the in-memory dataset -> a metrics.* function
+  -> JSON (or CSV). The middleware adds security headers and writes one log line to CloudWatch.
+
+Sections: configuration, access log, filters, endpoints, interaction events, portal.
 """
 
 from __future__ import annotations
@@ -37,8 +44,12 @@ from . import metrics, schemas
 from .dataset import Dataset, load, slug
 from .query import Filters
 
+# Configuration -------------------------------------------------------------
+
+# Where the processed dataset is: a local file by default, s3://... on Lambda (set by CloudFormation).
 DATA_SOURCE = os.environ.get("ROADALYX_DATA", "data/processed/crashes.json.gz")
 WEB_DIR = Path(os.environ.get("ROADALYX_WEB", Path(__file__).parent / "web"))
+# Largest page of crash records one JSON request can ask for; the CSV export has no page limit.
 MAX_PAGE = 1000
 
 # The map basemap is the only third-party origin the portal talks to.
@@ -66,9 +77,11 @@ app = FastAPI(
     redoc_url=None,
     openapi_url="/api/openapi.json",
 )
+# Compress responses over 1 KB: the map points and breakdowns shrink several times over the network.
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
+# When this instance started and how long the dataset took to load, reported by /api/health.
 STARTED = time.time()
 LOADED: dict = {}
 
@@ -82,6 +95,9 @@ def data() -> Dataset:
     return dataset
 
 
+# Access log -----------------------------------------------------------------
+
+# User-Agent markers, checked in order (Edge and Opera also say "Chrome/", so they come first).
 _OS = (("Windows", "Windows"), ("iPhone", "iOS"), ("iPad", "iOS"), ("Android", "Android"),
        ("Mac OS X", "macOS"), ("CrOS", "ChromeOS"), ("Linux", "Linux"))
 _BROWSERS = (("Edg/", "Edge"), ("OPR/", "Opera"), ("Firefox/", "Firefox"), ("Chrome/", "Chrome"),
@@ -100,6 +116,7 @@ def client_of(user_agent: str) -> dict:
 
 @app.middleware("http")
 async def headers_and_access_log(request: Request, call_next):
+    """Runs around every request: security headers, cache rules, and one JSON log line."""
     started = time.perf_counter()
     response = await call_next(request)
     response.headers.update({k: v for k, v in SECURITY_HEADERS.items() if k not in response.headers})
@@ -132,6 +149,7 @@ def _split(values: list[str]) -> list[str]:
 
 
 def _known(name: str, values: list[str], allowed: list[str]) -> frozenset[str]:
+    """Slugs of the chosen values; any value not in the data is a 422 that lists the allowed ones."""
     chosen = {slug(v) for v in _split(values)}
     unknown = chosen - set(allowed)
     if unknown:
@@ -151,6 +169,8 @@ def filters(
     location: Annotated[Literal["intersection", "segment", "driveway"] | None,
                         Query(description="Intersection or intersection-related, segment (non-intersection), or driveway access.")] = None,
 ) -> Filters:
+    """The query string as one Filters object. FastAPI calls it for every data endpoint (FilterDep),
+    so validation and error messages are the same everywhere."""
     opts = data().options
     if year_from is not None and year_to is not None and year_from > year_to:
         raise HTTPException(422, {"parameter": "year_from", "message": "year_from is after year_to"})
@@ -171,6 +191,7 @@ def filters(
 
 
 def _streets(values: list[str]) -> frozenset[str]:
+    """Streets are checked against the 1,300+ names in the data instead of a list in /meta."""
     chosen = {slug(v) for raw in values for v in raw.split(",") if v.strip()}
     unknown = chosen - data().streets
     if unknown:
@@ -183,6 +204,7 @@ FilterDep = Annotated[Filters, Depends(filters)]
 
 
 def _envelope(f: Filters, crashes: list[dict], payload: dict) -> dict:
+    """Every filtered response has the same frame: the filters applied, the result, the crash total."""
     return {"filters": f.as_dict(), **payload, "total": len(crashes)}
 
 
@@ -190,6 +212,7 @@ def _envelope(f: Filters, crashes: list[dict], payload: dict) -> dict:
 
 @app.get("/api/docs", include_in_schema=False)
 def api_docs():
+    """Interactive API reference (Swagger UI), with its own stricter CSP built from the page's scripts."""
     page = get_swagger_ui_html(openapi_url=app.openapi_url, title="Roadalyx API",
                                swagger_js_url=SWAGGER + "swagger-ui-bundle.js",
                                swagger_css_url=SWAGGER + "swagger-ui.css", swagger_favicon_url="/favicon.svg")
@@ -204,6 +227,7 @@ def api_docs():
 
 @app.get("/api/health", tags=["service"], summary="Liveness, data freshness and where this instance runs")
 def health():
+    """Used by the deploy script's smoke test: proves the function runs and the dataset loaded."""
     d = data()
     env = os.environ
     return {
@@ -225,6 +249,7 @@ def health():
 
 @app.get("/api/v1/meta", tags=["service"], summary="Dataset provenance, coverage and valid filter values")
 def meta():
+    """What the dataset is and what each filter accepts. The portal builds its menus from this."""
     d = data()
     start, end = d.coverage
     return {
@@ -244,6 +269,7 @@ def meta():
 @app.get("/api/v1/severity", response_model=schemas.SeverityResponse, tags=["metrics"],
          summary="Crash counts by KABCO severity")
 def severity(f: FilterDep):
+    """Required metric 1: K, A, B and C crash counts, the K+A share, people killed and seriously injured."""
     crashes = f.apply(data().crashes)
     return _envelope(f, crashes, metrics.severity_counts(crashes))
 
@@ -251,6 +277,7 @@ def severity(f: FilterDep):
 @app.get("/api/v1/factors", response_model=schemas.FactorsResponse, tags=["metrics"],
          summary="Most frequent contributing factors")
 def factors(f: FilterDep, limit: Annotated[int, Query(ge=1, le=100)] = 5):
+    """Required metric 2: the top contributing factors (5 by default), each with its K+A share."""
     crashes = f.apply(data().crashes)
     return _envelope(f, crashes, metrics.top_factors(crashes, limit))
 
@@ -258,6 +285,7 @@ def factors(f: FilterDep, limit: Annotated[int, Query(ge=1, le=100)] = 5):
 @app.get("/api/v1/trends", response_model=schemas.TrendResponse, tags=["metrics"],
          summary="Crash counts over time, split by severity")
 def trends(f: FilterDep, by: Literal["year", "month", "hour", "weekday"] = "year"):
+    """Required metric 3: crashes per year, month, hour of day or day of week, split by severity."""
     crashes = f.apply(data().crashes)
     # Periods outside the requested years are not zeros, they are out of scope: clip the axis to them.
     start, end = data().coverage
@@ -271,6 +299,7 @@ def trends(f: FilterDep, by: Literal["year", "month", "hour", "weekday"] = "year
 @app.get("/api/v1/heatmap", response_model=schemas.HeatmapResponse, tags=["metrics"],
          summary="Crashes by day of week and hour of day")
 def heatmap(f: FilterDep):
+    """When crashes happen within the week: a 7 x 24 grid, for the day-and-hour chart."""
     crashes = f.apply(data().crashes)
     return _envelope(f, crashes, metrics.weekday_hour(crashes))
 
@@ -281,15 +310,18 @@ def breakdown(f: FilterDep,
               by: Literal["county", "road_class", "rural", "weather", "collision", "first_event",
                           "intersection", "speed_limit", "street"] = "county",
               limit: Annotated[int | None, Query(ge=1, le=500)] = None):
+    """Crashes grouped by one attribute; by=street ranks corridors, by=intersection feeds the Location filter."""
     crashes = f.apply(data().crashes)
     return _envelope(f, crashes, metrics.breakdown(crashes, by, limit))
 
 
+# Sort orders for the crash list: (sort key, descending?). Severity sorts K first, then by date.
 SORTS = {
     "newest": (lambda c: (c["date"], c["time"] or ""), True),
     "oldest": (lambda c: (c["date"], c["time"] or ""), False),
     "severity": (lambda c: ("KABC".index(c["severity"]), c["date"]), False),
 }
+# The CSV has the same columns as a JSON crash record, in the same order.
 CSV_FIELDS = list(schemas.Crash.model_fields)
 
 
@@ -306,6 +338,7 @@ def crashes(f: FilterDep,
             offset: Annotated[int, Query(ge=0)] = 0,
             sort: Literal["newest", "oldest", "severity"] = "newest",
             format: Literal["json", "csv"] = "json"):
+    """The crash records behind the figures: a page of JSON for the table, or every match as CSV."""
     key, reverse = SORTS[sort]
     rows = sorted(f.apply(data().crashes), key=key, reverse=reverse)
     if format == "csv":
@@ -327,6 +360,7 @@ def crashes(f: FilterDep,
 @app.get("/api/v1/crashes/{crash_id}", response_model=schemas.Crash, tags=["records"],
          summary="One crash by CRIS Crash ID")
 def crash(crash_id: int):
+    """The full record of one crash, opened from a map point or a table row."""
     found = data().by_id.get(crash_id)
     if found is None:
         raise HTTPException(404, f"No crash {crash_id} in this dataset")
@@ -336,6 +370,8 @@ def crash(crash_id: int):
 @app.get("/api/v1/points", response_model=schemas.PointsResponse, tags=["records"],
          summary="Located crashes as compact arrays, for maps")
 def points(f: FilterDep):
+    """Coordinates, severity and date of every located crash in the selection, for both maps.
+    `total` still counts the crashes without coordinates, so the portal can say how many are missing."""
     rows = f.apply(data().crashes)
     located = [c for c in rows if c["lat"] is not None and c["lon"] is not None]
     # Street names repeat across thousands of crashes: send each once, and an index per point.
@@ -353,6 +389,10 @@ def points(f: FilterDep):
         "street": [index.get(c["street"], -1) for c in located],
     })
 
+
+# Interaction events ------------------------------------------------------------
+# The portal (web/src/lib/track.ts) reports what a visitor does: pages, clicks, filters, map zoom.
+# Strict sizes and a pattern on the id keep the endpoint from being used to flood the logs.
 
 class _Event(BaseModel):
     t: int = Field(ge=0, le=86_400_000)  # ms since the page loaded
@@ -406,4 +446,7 @@ def portal(path: str):
     return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
+# The Lambda entry point (Handler: roadalyx.api.handler in infra/template.yaml). Mangum turns the
+# Function URL event into an ASGI request for FastAPI and the response back into what Lambda returns,
+# so the same app runs under uvicorn locally and on Lambda without changes.
 handler = Mangum(app, lifespan="off")

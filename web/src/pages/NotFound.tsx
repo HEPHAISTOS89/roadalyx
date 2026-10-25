@@ -1,3 +1,4 @@
+// Fallback for unknown paths, with a way back to the district map.
 import { Link } from 'react-router-dom';
 
 export default function NotFound() {

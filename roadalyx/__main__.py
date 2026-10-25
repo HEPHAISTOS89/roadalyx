@@ -1,6 +1,10 @@
 """Process a CRIS export: validate it, print the required metrics, write the processed dataset.
 
     python -m roadalyx data/raw/district_crashes.csv [--out data/processed/crashes.json.gz]
+
+This is the pipeline's entry point. It uses the functions in cris.py in order, refuses to write
+anything if the cleaned crash count disagrees with the totals in the export header, prints the
+three required metrics, and writes the gzipped JSON file that the API serves (locally or from S3).
 """
 
 from __future__ import annotations
@@ -14,11 +18,13 @@ from . import cris, dataset, metrics
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Parse the command line and run the pipeline; returns the process exit code."""
     parser = argparse.ArgumentParser(prog="python -m roadalyx", description=__doc__.splitlines()[0])
     parser.add_argument("csv", type=Path, help="CRIS query export (CSV)")
     parser.add_argument("--out", type=Path, default=Path("data/processed/crashes.json.gz"))
     parser.add_argument("--force", action="store_true", help="write the dataset even if the checks fail")
     args = parser.parse_args(argv)
+    # A bad export is a user error, not a crash: print one readable line and exit with code 1.
     try:
         return _process(args)
     except (ValueError, OSError) as exc:
@@ -27,6 +33,8 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _process(args: argparse.Namespace) -> int:
+    """Read, check, clean, report, write."""
+    # Read the export and build one record per crash (see cris.py for every cleaning rule).
     export = cris.read_export(args.csv)
     persons = export.persons
     conflicts = cris.conflicting_crashes(persons)
@@ -46,6 +54,7 @@ def _process(args: argparse.Namespace) -> int:
         print(f"Nothing written to {args.out}. Fix the export or pass --force.", file=sys.stderr)
         return 1
 
+    # Provenance travels with the data: the API shows it in /api/v1/meta and every figure can be traced back.
     meta = {
         "source": "TxDOT Crash Records Information System (CRIS), query export",
         "source_file": args.csv.name,
@@ -69,7 +78,7 @@ def _process(args: argparse.Namespace) -> int:
 
 
 def report(data: dataset.Dataset) -> str:
-    """The three required metrics, as plain text."""
+    """The three required metrics, as plain text: severity counts, top 5 factors, crashes per year."""
     crashes = data.crashes
     sev = metrics.severity_counts(crashes)
     top = metrics.top_factors(crashes)

@@ -1,3 +1,4 @@
+// Which x-axis labels the trend chart can afford at its current width (about one per 64 px).
 import type { Bucket } from './types';
 
 /** Decimate year boundaries, not arbitrary months: always preserve the first and last year. */

@@ -4,6 +4,13 @@ A CRIS export has one row per *person* involved in a crash. Crash-level fields
 (date, county, severity, contributing factors, location...) are repeated on every
 person row of the same crash, so every crash metric must be computed on a table
 with exactly one row per Crash ID. That table is what `build_crashes` returns.
+
+The steps, in the order `python -m roadalyx` runs them:
+  1. read_export          skip the disclaimer lines, read every cell as text, keep the header totals
+  2. conflicting_crashes  check that the person rows of one crash agree on every crash-level column
+  3. build_crashes        one typed, cleaned record per crash (the rules are in the helpers below)
+
+Only this module and __main__.py need pandas; they run once on a workstation, never on Lambda.
 """
 
 from __future__ import annotations
@@ -14,16 +21,20 @@ from pathlib import Path
 
 import pandas as pd
 
+# The first real line of the table. Everything above it is CRIS's disclaimer and query summary.
 HEADER_START = '"Crash ID"'
 # CRIS writes a missing value as text; these are the spellings found in the export.
 MISSING = {"", "NO DATA", "NOT REPORTED"}
+# KABCO codes present in an injury-crash export (O, property damage only, is not exported here).
 SEVERITIES = ("K", "A", "B", "C")
 # Generous Texas bounding box: a coordinate outside it is a geocoding error, not a crash location.
 TEXAS_BOUNDS = {"lat": (25.8, 36.6), "lon": (-106.7, -93.5)}
 # Person Type codes (CRIS code list) that identify vulnerable road users.
 VRU_PERSON_TYPES = {"3": "pedalcyclist", "4": "pedestrian", "5": "motorcyclist", "6": "motorcyclist"}
 
-# Crash-level columns the pipeline keeps. Everything else is person or vehicle level.
+# Crash-level columns the pipeline keeps, 24 of the 94 in the export. Everything else describes a
+# person (age, injury, restraint) or a vehicle (make, colour), which the crash metrics do not need.
+# Each kept column has one value per crash, repeated on all of that crash's person rows.
 CRASH_COLUMNS = [
     "Crash ID", "Crash Date", "Crash Time", "Crash Year", "County", "Crash Severity",
     "Crash Death Count", "Crash Suspected Serious Injury Count", "Crash Total Injury Count",
@@ -45,9 +56,13 @@ class Export:
     filters: list[str] = field(default_factory=list)
 
 
+# 1. Reading the export ------------------------------------------------------
+
 def read_export(path: str | Path) -> Export:
     """Read the CSV, skipping the disclaimer lines CRIS writes above the header row."""
     path = Path(path)
+    # Collect the lines above the header: they are not data, but they say how many crashes,
+    # units and persons the query returned, which __main__.py later checks the result against.
     with path.open(encoding="utf-8-sig") as f:
         preamble = []
         for line in f:
@@ -60,23 +75,29 @@ def read_export(path: str | Path) -> Export:
     # dtype=str and keep_default_na=False: read every cell verbatim and decide what "missing" means ourselves.
     persons = pd.read_csv(path, skiprows=len(preamble), encoding="utf-8-sig",
                           dtype=str, keep_default_na=False)
+    # Fail early, with the column names, if this is not the CRIS layout the pipeline expects.
     missing = [c for c in CRASH_COLUMNS + ["Person Type"] if c not in persons.columns]
     if missing:
         raise ValueError(f"{path}: missing expected CRIS columns: {', '.join(missing)}")
 
+    # "Your query returned a total of 24,261 Crashes containing 48,043 Units and 67,906 Persons"
     export = Export(persons=persons)
     counts = next((re.search(r"([\d,]+) Crashes containing ([\d,]+) Units and ([\d,]+) Persons", line)
                    for line in preamble if "Crashes containing" in line), None)
     if counts:
         export.declared_crashes, export.declared_units, export.declared_persons = (
             int(n.replace(",", "")) for n in counts.groups())
+    # The query filters (years, district, severities) are kept as text for the dataset's provenance.
     filters_at = next((i for i, line in enumerate(preamble) if line.startswith("Filters Applied")), None)
     if filters_at is not None:
         export.filters = [line for line in preamble[filters_at + 1:] if line]
     return export
 
 
+# Cleaning helpers: one per kind of messiness found in the export ------------
+
 def _text(value: str) -> str | None:
+    """Collapse spaces and case, so 'Lubbock ' and 'LUBBOCK' are one county; CRIS's 'No Data' becomes None."""
     text = " ".join(value.split()).upper()
     return None if text in MISSING else text
 
@@ -93,6 +114,7 @@ def _flag(value: str) -> bool | None:
 
 
 def _int(value: str) -> int | None:
+    """A whole number, or None when the cell is blank or text such as 'No Data'."""
     try:
         return int(value)
     except ValueError:
@@ -100,6 +122,7 @@ def _int(value: str) -> int | None:
 
 
 def _count(value: str, column: str, crash_id: str) -> int:
+    """Deaths and injury counts must be present: a missing one would silently undercount K and A."""
     count = _int(value)
     if count is None or count < 0:
         raise ValueError(f"Crash {crash_id}: missing or invalid {column} {value!r}; expected a non-negative integer")
@@ -107,6 +130,7 @@ def _count(value: str, column: str, crash_id: str) -> int:
 
 
 def _coord(value: str, axis: str) -> float | None:
+    """Latitude or longitude; blank, unparseable or outside Texas becomes None (counted, not mapped)."""
     try:
         number = float(value)
     except ValueError:
@@ -125,24 +149,33 @@ def _factors(value: str) -> list[str]:
     return out
 
 
+# 2. Consistency check -------------------------------------------------------
+
 def conflicting_crashes(persons: pd.DataFrame) -> int:
     """Number of crashes whose person rows disagree on a crash-level column (expected 0)."""
     varying = persons[CRASH_COLUMNS].groupby("Crash ID").nunique()
     return int((varying > 1).any(axis=1).sum())
 
 
+# 3. One record per crash -----------------------------------------------------
+
 def build_crashes(persons: pd.DataFrame) -> list[dict]:
     """Collapse person rows to one record per crash, with cleaned, typed fields."""
     if persons.empty:
         raise ValueError("The export contains no person rows.")
+    # Two facts need every person row, so they are computed before the collapse:
+    # how many people were involved, and whether any of them was a vulnerable road user.
     people = persons.groupby("Crash ID").size()
     person_type = persons["Person Type"].str.split(" - ").str[0].map(VRU_PERSON_TYPES)
     vru = person_type.dropna().groupby(persons["Crash ID"]).agg(lambda s: sorted(set(s)))
 
+    # The crash-level columns are identical on every person row (checked by conflicting_crashes),
+    # so the first row of each Crash ID carries the whole crash.
     records = []
     for row in persons.drop_duplicates("Crash ID")[CRASH_COLUMNS].itertuples(index=False):
         r = dict(zip(CRASH_COLUMNS, row))
         crash_id = r["Crash ID"]
+        # Identity and date are required: a record without them cannot be counted or placed in time.
         id_text = str(crash_id).strip()
         if not re.fullmatch(r"[0-9]+", id_text) or int(id_text) == 0:
             raise ValueError(f"Missing or invalid Crash ID: {crash_id!r}")
@@ -157,10 +190,12 @@ def build_crashes(persons: pd.DataFrame) -> list[dict]:
             hhmm = None
         speed = _int(r["Speed Limit"])
         street = _text(r["Street Name"])
+        # "K - FATAL INJURY" -> "K". CRIS already sets the crash severity to its worst injury.
         severity = (_text(r["Crash Severity"]) or "")[:1]
         if severity not in SEVERITIES:
             raise ValueError(f"Crash {crash_id}: severity {r['Crash Severity']!r}; this pipeline covers K, A, B and C "
                              "crashes, as in the provided export")
+        # The cleaned record. Its field names are the ones the metrics, the API and the portal use.
         records.append({
             "id": int(crash_id),
             "date": date.date().isoformat(),
@@ -192,5 +227,6 @@ def build_crashes(persons: pd.DataFrame) -> list[dict]:
             "reportable": _flag(r["TxDOT Reportable Flag"]),
             "vru": vru.get(crash_id, []),
         })
+    # Chronological order, so the dataset file and the "newest first" crash list are stable.
     records.sort(key=lambda c: (c["date"], c["time"] or "", c["id"]))
     return records

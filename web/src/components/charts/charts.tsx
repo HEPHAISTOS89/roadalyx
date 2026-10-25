@@ -1,3 +1,6 @@
+// The SVG charts of the Analysis page, drawn with d3-scale and React (no chart library):
+// severity bars, contributing factors, the trend over time and the day-by-hour heat map.
+// Each one is keyboard navigable and has a data table for screen readers.
 import { useState, type KeyboardEvent } from 'react';
 import { tickIndices } from '../../lib/chartTicks';
 import { scaleBand, scaleLinear } from 'd3-scale';
@@ -10,6 +13,7 @@ const SEV_VAR: Record<Sev, string> = { K: 'var(--sev-k)', A: 'var(--sev-a)', B: 
 // CRIS KABCO terms
 const SEV_NAME: Record<Sev, string> = { K: 'Fatal', A: 'Suspected serious', B: 'Suspected minor', C: 'Possible injury' };
 
+// A round axis maximum (e.g. 1,000 rather than 943).
 function niceMax(v: number) {
   return scaleLinear().domain([0, Math.max(v, 1)]).nice(4).domain()[1];
 }
@@ -46,6 +50,7 @@ export function FactorBars({ rows, total, onPick, active }: { rows: FactorRow[];
       {rows.length === 0 && <p className="empty-note">No coded factor in this selection.</p>}
       <ol>
         {rows.map((r) => {
+          // same slug rule as lib/filters, so the factor matches the URL filter
           const slugged = r.factor.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
           return (
             <li key={r.factor}>
@@ -77,6 +82,7 @@ export function TrendChart({ buckets, by, onPickYear }: { buckets: Bucket[]; by:
   const top = niceMax(Math.max(...buckets.map((b) => b.crashes)));
   const y = scaleLinear().domain([0, top]).range([h - m.b, m.t]);
   const ticks = tickIndices(buckets, by, width);
+  // Roving tabindex: one bar is in the tab order, arrow keys move between bars, Enter on a year filters it.
   const [active, setActive] = useState(0);
   const focused = Math.min(active, buckets.length - 1);
   const readout = buckets[focused];
@@ -95,6 +101,7 @@ export function TrendChart({ buckets, by, onPickYear }: { buckets: Bucket[]; by:
     <div ref={ref} className="chart">
       {width > 0 && (
         <svg width={width} height={h} role="group" aria-label={`Crashes per ${by}, stacked by severity. Use left and right arrows to inspect values.`}>
+          {/* gridlines and y-axis labels */}
           {y.ticks(4).map((t) => (
             <g key={t}>
               <line x1={m.l} x2={width - m.r} y1={y(t)} y2={y(t)} className="grid" />
@@ -119,6 +126,7 @@ export function TrendChart({ buckets, by, onPickYear }: { buckets: Bucket[]; by:
                 {SEVS.map((s) => <span key={s}><i className={`sw ${s.toLowerCase()}`} />{s} {int(b[s])}</span>)}
                 {by === 'year' && onPickYear && <span className="muted">Activate to keep only {b.label}</span>}
               </>); }} onPointerLeave={hide}>
+                {/* a full-height transparent hit area, so short bars are as easy to point at as tall ones */}
                 <rect x={bx - 2} y={m.t} width={bw + 4} height={h - m.b - m.t} fill="transparent" />
                 <g className="bar-in">
                   {SEVS.map((s) => {
@@ -143,6 +151,7 @@ export function TrendChart({ buckets, by, onPickYear }: { buckets: Bucket[]; by:
         </svg>
       )}
       {readout && <p className="chart-readout"><b>{readout.label}{readout.complete ? '' : ' · partial'}</b><span>{int(readout.crashes)} crashes</span>{SEVS.map((code) => <span key={code}>{code} {int(readout[code])}</span>)}</p>}
+      {/* The same numbers as a table, for screen readers and for reading exact values. */}
       <details className="chart-data">
         <summary>View time data</summary>
         <div className="table-wrap" tabIndex={0} role="region" aria-label="Time data">
@@ -171,6 +180,7 @@ export function Heatmap({ data, metric }: { data: HeatmapRes; metric: 'crashes' 
       e.currentTarget.closest('svg')?.querySelector<SVGRectElement>(`[data-cell="${next}"]`)?.focus();
     } else if (e.key === 'Escape') hide();
   };
+  // Cells of 24 columns; their height follows the width within 16 to 30 px.
   const max = Math.max(...grid.flat(), 1);
   const m = { l: 40, t: 4, b: 22 };
   const cw = Math.max((width - m.l) / 24, 6);
@@ -178,6 +188,7 @@ export function Heatmap({ data, metric }: { data: HeatmapRes; metric: 'crashes' 
   const h = m.t + ch * 7 + m.b;
   // One hue light to dark, mixed in CSS from the theme's ramp so a theme switch recolours without a re-render.
   const [lo, hi] = metric === 'crashes' ? ['var(--heat-lo)', 'var(--heat-hi)'] : ['var(--heat-ka-lo)', 'var(--heat-ka-hi)'];
+  // Square-root scale: a few very busy hours do not wash every other cell out.
   const shade = (v: number) => `color-mix(in oklab, ${hi} ${Math.round(8 + 92 * Math.sqrt(v / max))}%, ${lo})`;
   return (
     <div ref={ref} className="chart">

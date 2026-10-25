@@ -1,4 +1,9 @@
-"""Filters shared by every API endpoint."""
+"""Filters shared by every API endpoint.
+
+api.filters() turns the query string into one Filters object (and rejects unknown values with a
+422); every endpoint then calls .apply() on the same crash list, so a total on one endpoint always
+matches the same selection on another.
+"""
 
 from __future__ import annotations
 
@@ -26,6 +31,8 @@ class Filters:
     location: str | None = None
 
     def matches(self, c: dict) -> bool:
+        """True if the crash passes every filter. Values within one filter are OR, filters are AND:
+        county=lubbock,hale&severity=K means fatal crashes in Lubbock or Hale."""
         return ((not self.county or slug(c["county"]) in self.county)
                 and (not self.severity or c["severity"] in self.severity)
                 and (not self.road_class or slug(c["road_class"]) in self.road_class)
@@ -37,6 +44,7 @@ class Filters:
                 and (self.location is None or c["intersection"] in LOCATIONS[self.location]))
 
     def apply(self, crashes: list[dict]) -> list[dict]:
+        """The crashes in the selection. A linear scan of 24,261 records takes a few milliseconds."""
         return [c for c in crashes if self.matches(c)]
 
     def as_dict(self) -> dict:

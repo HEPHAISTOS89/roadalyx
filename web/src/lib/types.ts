@@ -39,4 +39,6 @@ export interface Crash {
   school_zone: boolean | null; reportable: boolean | null; vru: string[];
 }
 export interface CrashPage extends Filtered { limit: number; offset: number; crashes: Crash[] }
+// Located crashes as parallel arrays (one entry per crash), compact for tens of thousands of points.
+// severity is one KABCO letter per crash; day counts from `start`; street indexes `streets` (-1: none).
 export interface Points extends Filtered { located: number; start: string; id: number[]; lon: number[]; lat: number[]; severity: string; day: number[]; streets: string[]; street: number[] }

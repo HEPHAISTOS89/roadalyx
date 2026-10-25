@@ -1,3 +1,5 @@
+// Shared UI primitives: the segmented control used for every toggle group, and the rolling number
+// used for the key figures.
 import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
 
 /*
@@ -23,12 +25,14 @@ export function Seg({ children, className = '', multi = false, as: Tag = 'div', 
       const on = el.querySelector<HTMLElement>(ON);
       t.style.opacity = on ? '1' : '0';
       if (!on) return;
+      // The first placement jumps into place; later ones slide. Reading offsetWidth forces the jump to apply.
       if (first) t.style.transition = 'none';
       t.style.width = `${on.offsetWidth}px`;
       t.style.transform = `translateX(${on.offsetLeft}px)`;
       if (first) { void t.offsetWidth; t.style.transition = ''; first = false; }
     };
     place();
+    // Follow selection changes made anywhere (React or not) and changes of the buttons' widths.
     const mo = new MutationObserver(place);
     mo.observe(el, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-pressed', 'aria-selected', 'aria-current'] });
     const ro = new ResizeObserver(place);

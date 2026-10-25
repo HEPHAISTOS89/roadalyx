@@ -1,4 +1,8 @@
-"""Response models. They document the API (OpenAPI at /api/docs) and validate what it returns."""
+"""Response models. They document the API (OpenAPI at /api/docs) and validate what it returns.
+
+One model per endpoint, named after it. Every response that depends on a selection extends
+`Filtered`, so it carries the filters the server applied and the number of matching crashes.
+"""
 
 from __future__ import annotations
 
@@ -8,6 +12,8 @@ from pydantic import BaseModel, Field
 
 Severity = Literal["K", "A", "B", "C"]
 
+
+# Shared by every filtered response --------------------------------------------
 
 class AppliedFilters(BaseModel):
     county: list[str]
@@ -26,6 +32,8 @@ class Filtered(BaseModel):
     total: int = Field(description="Crashes matching the filters.")
 
 
+# /api/v1/severity: the KABCO counts ----------------------------------------------
+
 class SeverityRow(BaseModel):
     code: Severity
     label: str
@@ -40,6 +48,8 @@ class SeverityResponse(Filtered):
     serious_injuries: int = Field(description="People with a suspected serious injury.")
 
 
+# /api/v1/factors: the contributing-factor ranking ---------------------------------
+
 class FactorRow(BaseModel):
     rank: int
     factor: str
@@ -53,6 +63,8 @@ class FactorsResponse(Filtered):
     crashes_without_coded_factor: int = Field(description="Crashes citing only NONE or OTHER (EXPLAIN IN NARRATIVE).")
     factors: list[FactorRow]
 
+
+# /api/v1/trends and /api/v1/heatmap: crashes over time --------------------------
 
 class TrendBucket(BaseModel):
     key: int | str
@@ -78,6 +90,8 @@ class HeatmapResponse(Filtered):
     unknown: int = Field(description="Crashes without a usable time, left out of the grid.")
 
 
+# /api/v1/breakdown: crashes per county, road class, street, location... --------
+
 class BreakdownRow(BaseModel):
     value: str | int | bool | None
     crashes: int
@@ -94,7 +108,11 @@ class BreakdownResponse(Filtered):
     groups: list[BreakdownRow]
 
 
+# /api/v1/crashes: the individual crash records ------------------------------------
+
 class Crash(BaseModel):
+    """One cleaned crash record, the same fields cris.build_crashes writes."""
+
     id: int
     date: str
     time: str | None
@@ -132,7 +150,11 @@ class CrashPage(Filtered):
     crashes: list[Crash]
 
 
+# /api/v1/points: every located crash, for the maps --------------------------------
+
 class PointsResponse(Filtered):
+    """Parallel arrays rather than one object per crash: the 23,400 located crashes stay small enough to send at once."""
+
     located: int = Field(description="Crashes with coordinates (the arrays below).")
     start: str = Field(description="First date of the dataset; `day` counts days from it.")
     id: list[int]
