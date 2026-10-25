@@ -20,7 +20,7 @@
 </p>
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis">
-    <img src="docs/assets/analysis.jpg" width="880" alt="The Analysis page: filters for county, severity and years; totals of 24,261 injury crashes, 624 fatal and 1,546 suspected serious; a crash map of the 17 counties; severity bars and the ranked contributing factors.">
+    <img src="docs/assets/analysis.jpg" width="880" alt="The Analysis page: filters for county, severity and years; totals of 24,261 injury crashes, 624 fatal and 1,546 suspected serious; a crash map of the 17 counties with a Location filter (intersection, segment, driveway) and the top corridors, led by Loop 289, US 62 and US 84; severity bars and the ranked contributing factors.">
   </a>
 </p>
 
