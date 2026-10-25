@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="790" viewBox="0 0 880 790" role="img" aria-labelledby="title description">
+  <title id="title">Roadalyx architecture</title>
+  <desc id="description">The CSV is cleaned locally with Python and uploaded to private S3. An analyst calls a public Lambda function URL. FastAPI and Mangum run on Lambda, load the processed data into memory, apply filters and return JSON or CSV. CloudWatch receives request logs. IAM limits the function to its data object and logs.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#65795b" stroke-width="1.8" stroke-linejoin="round"/></marker>
+  </defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#243021; }
+    .label { font-size:18px; font-weight:600; letter-spacing:1.4px; }
+    .name { font-size:24px; font-weight:650; }
+    .detail { font-size:18px; fill:#53604e; }
+    .mono { font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:17px; }
+    .edge { fill:none; stroke:#65795b; stroke-width:2; marker-end:url(#arrow); }
+    @media (prefers-reduced-motion:reduce) { .flow { display:none; } }
+  </style>
+  <rect x="1" y="1" width="878" height="788" rx="18" fill="#f7f9f5" stroke="#d8dfd2"/>
+  <rect x="24" y="24" width="832" height="172" rx="12" fill="#fff" stroke="#d8dfd2"/>
+  <text x="48" y="58" class="label">LOCAL PROCESSING</text>
+  <rect x="48" y="80" width="240" height="80" rx="8" fill="#f7f9f5" stroke="#d8dfd2"/>
+  <text x="68" y="112" class="name">CSV export</text>
+  <text x="68" y="140" class="mono">district_crashes.csv</text>
+  <path d="M296 120 H376" class="edge"/>
+  <rect x="384" y="80" width="440" height="80" rx="8" fill="#edf3e7" stroke="#c8d6bd"/>
+  <text x="408" y="112" class="name">Python cleaning</text>
+  <text x="408" y="140" class="detail">Validate, group by Crash ID, write JSON</text>
+
+  <rect x="256" y="248" width="600" height="514" rx="12" fill="#edf3e7" stroke="#c8d6bd"/>
+  <text x="280" y="278" class="label">AWS / us-east-2</text>
+  <path d="M604 160 V232 H682 V298" class="edge"/>
+  <text x="462" y="226" class="detail">upload</text>
+  <rect x="532" y="298" width="300" height="92" rx="8" fill="#fff" stroke="#c8d6bd"/>
+  <text x="556" y="335" class="name">Private S3</text>
+  <text x="556" y="366" class="mono">crashes.json.gz</text>
+  <g fill="none" stroke="#65795b" stroke-width="1.8">
+    <ellipse cx="798" cy="326" rx="13" ry="5"/>
+    <path d="M785 326 V348 C785 355 811 355 811 348 V326 M785 337 C785 344 811 344 811 337"/>
+  </g>
+  <path d="M682 398 V462" class="edge"/>
+  <text x="700" y="436" class="detail">load data</text>
+
+  <rect x="24" y="470" width="184" height="110" rx="8" fill="#fff" stroke="#d8dfd2"/>
+  <text x="44" y="511" class="name">Analyst</text>
+  <text x="44" y="544" class="detail">Browser / API</text>
+  <rect x="280" y="470" width="184" height="110" rx="8" fill="#fff" stroke="#c8d6bd"/>
+  <text x="300" y="511" class="name">HTTPS URL</text>
+  <text x="300" y="544" class="detail">Function URL</text>
+  <path d="M216 525 H272" class="edge" marker-start="url(#arrow)"/>
+  <path d="M472 525 H524" class="edge" marker-start="url(#arrow)"/>
+  <text x="32" y="614" class="detail">HTTPS requests and responses</text>
+  <rect x="532" y="470" width="300" height="128" rx="8" fill="#172014"/>
+  <text x="556" y="510" class="name" style="fill:#f1f6ed">Lambda</text>
+  <text x="556" y="542" class="detail" style="fill:#d1ddc7">FastAPI + Mangum</text>
+  <text x="556" y="573" style="fill:#d1ddc7;font-size:16px">Filter and return JSON / CSV</text>
+  <path d="M682 606 V652" class="edge"/>
+  <text x="700" y="636" class="detail">logs</text>
+  <rect x="532" y="660" width="300" height="76" rx="8" fill="#fff" stroke="#c8d6bd"/>
+  <text x="556" y="691" style="font-size:23px;font-weight:650">CloudWatch Logs</text>
+  <text x="556" y="719" style="font-size:16px;fill:#53604e">Request status and duration</text>
+  <text x="280" y="666" class="label">ACCESS</text>
+  <text x="280" y="697" class="detail">S3 stays private.</text>
+  <text x="280" y="726" style="font-size:16px;fill:#53604e">IAM: data read + log writes</text>
+
+  <g class="flow" aria-hidden="true">
+    <circle r="4" fill="#65795b"><animateMotion dur="7s" repeatCount="indefinite" path="M604 160 V232 H682 V298"/></circle>
+    <circle r="4" fill="#65795b"><animateMotion dur="7s" begin="1.5s" repeatCount="indefinite" path="M682 398 V462"/></circle>
+  </g>
+</svg>

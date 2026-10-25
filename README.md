@@ -1,25 +1,30 @@
-# Roadalyx
+<p align="center">
+  <img src="docs/assets/roadalyx-mark.svg" width="72" height="72" alt="Roadalyx logo">
+</p>
+<h1 align="center">Roadalyx</h1>
+<p align="center">Crash analytics for the Lubbock District</p>
+<p align="center">
+  <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/">Live application</a> ·
+  <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs">API documentation</a> ·
+  <a href="notebooks/eda.ipynb">EDA notebook</a>
+</p>
 
-I built Roadalyx for the TransTech Lab coding assessment. It reads the supplied TxDOT CRIS export for the Lubbock District, calculates crash statistics, and serves them through a Python API on AWS.
+I built Roadalyx for the TransTech Lab coding assessment. It turns the supplied TxDOT CRIS export into crash statistics, a Python API and an analyst portal, deployed together on AWS.
 
-- [Live application](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/)
-- [API documentation](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs)
-- [EDA notebook](notebooks/eda.ipynb)
+## Where to look
 
-## Where to review the required work
-
-| Requirement | Where I implemented it |
+| Required work | Files |
 |---|---|
-| EDA, useful columns, data issues and cleaning decisions | [Notebook](notebooks/eda.ipynb) |
-| CSV parsing and one record per crash | [cris.py](roadalyx/cris.py) |
-| Severity counts, top five factors and time patterns | [metrics.py](roadalyx/metrics.py), [CLI](roadalyx/__main__.py) |
-| REST API, filters and response formats | [api.py](roadalyx/api.py), [query.py](roadalyx/query.py), [schemas.py](roadalyx/schemas.py) |
-| AWS deployment | [CloudFormation template](infra/template.yaml), [deployment script](scripts/deploy.sh) |
-| Tests | [Pipeline tests](tests/test_pipeline.py), [API tests](tests/test_api.py) |
+| EDA, relevant columns and cleaning decisions | [EDA notebook](notebooks/eda.ipynb) |
+| Read, check and clean the CSV | [cris.py](roadalyx/cris.py), [processing command](roadalyx/__main__.py) |
+| Severity counts, top five factors and time patterns | [metrics.py](roadalyx/metrics.py) |
+| API, shared filters and response formats | [api.py](roadalyx/api.py), [query.py](roadalyx/query.py), [schemas.py](roadalyx/schemas.py) |
+| AWS resources and deployment | [template.yaml](infra/template.yaml), [deploy.sh](scripts/deploy.sh) |
+| Cleaning and API tests | [test_pipeline.py](tests/test_pipeline.py), [test_api.py](tests/test_api.py) |
 
 ## Run locally
 
-I use Python 3.13, matching the Lambda runtime. The raw CSV is not in the repository; put the supplied file at `data/raw/district_crashes.csv`.
+I use Python 3.13, matching Lambda. Put the supplied CSV at `data/raw/district_crashes.csv` and run these commands from the repository root:
 
 ```bash
 python3.13 -m venv .venv
@@ -30,122 +35,147 @@ python -m roadalyx data/raw/district_crashes.csv
 uvicorn roadalyx.api:app --reload
 ```
 
-The processing command prints the three required metrics and writes `data/processed/crashes.json.gz`. Open `http://127.0.0.1:8000/api/docs` to query the API.
+The processing command prints the three required results and writes `data/processed/crashes.json.gz`. The API is then available at `http://127.0.0.1:8000/api/docs`.
 
-No environment variables are needed locally. `ROADALYX_DATA` can point to a different processed file, or to an `s3://bucket/key` URI on AWS. `ROADALYX_WEB` overrides the built frontend directory, which defaults to `roadalyx/web`.
+The raw CSV and processed data are not committed. No environment variables are needed for the commands above.
 
-Run the tests, or execute the notebook from the repository root:
+| Variable | Use |
+|---|---|
+| `ROADALYX_DATA` | Override the local processed file path; on AWS, CloudFormation supplies the S3 URI |
+| `ROADALYX_WEB` | Override `roadalyx/web`, the built frontend directory |
+| `AWS_REGION` | Choose the deployment region; the script defaults to `us-east-2` |
+
+### Tests and EDA
 
 ```bash
-pytest
-jupyter nbconvert --to notebook --execute --inplace notebooks/eda.ipynb
+python -m pytest
+python -m nbconvert --to notebook --execute --inplace \
+  notebooks/eda.ipynb
 ```
 
-The notebook also includes saved results so it can be read without running it.
+The notebook includes saved tables and charts, so it can also be read on GitHub without running it.
 
-## What I found in the data
+## What I found and changed
 
-The main problem was the unit of observation. The CSV has **67,906 person rows**, not 67,906 accidents. I found **24,261 distinct Crash IDs** and checked that the crash fields I keep agree within each ID.
+The CSV has **67,906 person rows but 24,261 crashes**. I checked that the crash fields agree across rows with the same Crash ID, then built one record per accident. I leave the source person rows unchanged.
 
-I build a separate crash table with one record per ID. I keep the source person rows unchanged. The main cleaning choices are:
+My other cleaning choices:
 
-- I find the CSV header after the preliminary lines rather than assuming the file starts with data.
-- I split contributing factors on `;`, trim spaces and remove repeats within each crash. One crash can contribute to several factor counts, but not twice to the same one.
-- I keep `NONE` and `OTHER (EXPLAIN IN NARRATIVE)` in the records but exclude them from the factor ranking. I report crashes without a specific coded factor separately.
-- I keep crashes with missing coordinates in the totals; they are absent only from the map.
-- I treat unknown speed limits as missing, normalize yes/no labels, and read crash times as HHMM.
-- I treat `UNKNOWN` and `NA` as missing street names. This affects 26 crashes, which stay in the totals.
-- I reject missing or invalid Crash IDs and dates, and empty exports, before writing the processed file. I also check the export's declared counts and conflicting crash fields.
-- I reject missing, non-numeric or negative death and injury counts instead of reporting them as zero.
+- I locate the header after the 11 introductory lines.
+- I split factor lists on `;`, normalize spaces and case, and count each distinct factor once per crash.
+- I keep `NONE` and `OTHER (EXPLAIN IN NARRATIVE)` in records, but leave them out of the ranking of specific factors.
+- I keep the 849 crashes without coordinates in the statistics, but not on the map.
+- I treat 191 speed limits coded `-1` as unknown, read times as HHMM, and normalize the different yes/no spellings.
+- I treat `UNKNOWN` and `NA` as missing street names for 26 crashes.
+- I reject empty exports and invalid IDs, dates or victim counts. By default, I also stop on inconsistent export totals or conflicting crash fields.
 
-I write the processed file to a temporary file first, then replace the previous one only when the write succeeds.
+I write the processed file to a temporary file first. It replaces the previous file only after the write succeeds.
 
-The supplied file contains K, A, B and C crashes from **1 January 2020 to 20 October 2026**. The results are:
+The export covers **1 January 2020 to 20 October 2026**:
 
 | Severity | Crashes |
 |---|---:|
-| K — fatal | 624 |
-| A — suspected serious injury | 1,546 |
-| B — suspected minor injury | 7,224 |
-| C — possible injury | 14,867 |
+| K: fatal injury | 624 |
+| A: suspected serious injury | 1,546 |
+| B: suspected minor injury | 7,224 |
+| C: possible injury | 14,867 |
 
-The most frequent factor is *Failed to control speed*, recorded in 5,559 crashes. The notebook shows the full top five and the time patterns. I mark 2026 as incomplete rather than presenting its lower count as a decline.
+The most frequently recorded factor is *Failed to control speed*, cited in **5,559 crashes**. The [EDA](notebooks/eda.ipynb) shows the full top five and the yearly counts. I mark 2026 as partial in both the API and charts.
 
 ## Query the API
 
-These three endpoints correspond to the required metrics:
+The three required results have their own endpoints:
 
-```bash
-curl 'http://127.0.0.1:8000/api/v1/severity'
-curl 'http://127.0.0.1:8000/api/v1/factors?limit=5'
-curl 'http://127.0.0.1:8000/api/v1/trends?by=year&county=lubbock'
-```
-
-I use the same calculation functions in the CLI and API. The metric and search endpoints share filters for county, severity, year range, road class, contributing factor and road-user involvement.
-
-Those responses include the applied filters and matching crash count. An unknown county returns `422` with the valid choices. A valid selection with no matching crashes returns zero, not an error.
-
-I added supporting endpoints for records, maps and breakdowns. The [OpenAPI documentation](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs) lists them. For a CSV export, use:
-
-```bash
-curl --compressed 'http://127.0.0.1:8000/api/v1/crashes?format=csv&county=lubbock'
-```
-
-## How I deployed it on AWS
-
-I process the CSV locally and upload only the derived crash table. The API reads that table from private S3 storage on its first request in a new Lambda instance, then keeps it in memory.
-
-```text
-CSV -> Python processing -> compressed JSON in private S3
-                                      |
-                                      v
-Client -> public HTTPS function URL -> Lambda / FastAPI
-                                      |
-                                      v
-                                CloudWatch logs
-```
-
-| Service | Why I chose it |
+| Endpoint | Result |
 |---|---|
-| Lambda | The crash table is small enough to filter in memory. I did not need a database or a server running continuously. |
-| Lambda function URL | It exposes the read-only API and frontend through one HTTPS address, without adding API Gateway. |
-| S3 | It holds the processed data separately from the application package. The bucket blocks public access. |
-| IAM | The function role can read the data object and write its logs. I do not put AWS credentials in the code. |
-| CloudWatch Logs | It records request status and duration. I set retention to 14 days. |
-| CloudFormation | It keeps the function, role, URL and log configuration in a reviewable template. |
+| `GET /api/v1/severity` | Crash counts and shares for K, A, B and C, plus victim totals |
+| `GET /api/v1/factors?limit=5` | The five most frequently recorded contributing factors |
+| `GET /api/v1/trends?by=year` | Crash counts over time, split by severity |
 
-A request reaches FastAPI through Mangum, the Lambda adapter. FastAPI validates the filters, selects the crashes and returns the computed result. The same function serves the frontend.
+For example, to get fatal and serious-injury crashes in Lubbock County during 2024–2025:
 
-To deploy to an AWS account with an authenticated AWS CLI session:
+```bash
+curl --get 'http://127.0.0.1:8000/api/v1/severity' \
+  --data-urlencode 'county=lubbock' \
+  --data-urlencode 'severity=K,A' \
+  --data-urlencode 'year_from=2024' \
+  --data-urlencode 'year_to=2025'
+```
+
+The metric and search endpoints share `county`, `severity`, `year_from`, `year_to`, `road_class`, `factor` and `vru` filters. Their JSON responses include the applied filters and matching crash count. An unknown county returns `422` with valid choices; a valid selection with no crashes returns zero.
+
+The processing command and API use the same metric functions. The [API documentation](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs) also covers crash records, map points, breakdowns and the day/hour grid.
+
+To download every matching crash as CSV:
+
+```bash
+curl --get --compressed --output selection.csv \
+  'http://127.0.0.1:8000/api/v1/crashes' \
+  --data-urlencode 'format=csv' \
+  --data-urlencode 'county=lubbock'
+```
+
+## AWS deployment
+
+I kept the app to one Lambda function and one private S3 bucket. The 24,261-crash table fits in memory, so I did not need a database or an always-on server.
+
+I clean the CSV locally and upload `crashes.json.gz` to S3. The first request that needs crash data loads it into the Lambda instance; later requests in that instance reuse it.
+
+![Architecture: local Python cleaning uploads processed data to private S3. An analyst reaches Lambda through its HTTPS Function URL. Lambda reads the data and writes CloudWatch logs.](docs/assets/architecture.svg)
+
+[View the architecture at full size](docs/assets/architecture.svg)
+
+| Service | Why I use it |
+|---|---|
+| Lambda | Run on demand and filter the small crash table in memory |
+| Function URL | Serve the API and frontend at one HTTPS address without API Gateway |
+| S3 | Keep the dataset separate from the code, with private storage for both data and deployment packages |
+| IAM | Limit the function to reading its data object and writing its own logs |
+| CloudWatch Logs | Inspect request status and duration; expire logs after 14 days |
+| CloudFormation | Recreate the function, role, URL and log configuration from a reviewable template |
+
+When a request reaches the function URL, Mangum passes it to FastAPI. FastAPI validates the filters, selects the matching crashes and returns JSON or CSV. The same function serves the frontend files, so the portal and API share one address.
+
+I chose services with Free Tier allowances. Request volume, storage and logs still need to stay within the account's allowances to avoid charges.
+
+### Deploy or update the data
+
+Deployment needs Node 22.12+, npm, AWS CLI, `zip`, `rsync` and the project virtual environment. Authenticate the AWS CLI before running the script. I use that session for deployment and an IAM role at runtime; no credentials are stored in the code.
 
 ```bash
 scripts/deploy.sh
-# After processing a replacement CSV, update only the dataset:
+```
+
+The script runs the Python tests, builds the frontend, packages Lambda's Linux dependencies, uploads the code and data to S3, and updates CloudFormation. It prints the public URL and checks `/api/health` at the end.
+
+After processing a replacement CSV, I can update only the dataset:
+
+```bash
+python -m roadalyx data/raw/district_crashes.csv
 scripts/deploy.sh data
 ```
 
-The script needs `aws`, `npm`, `zip`, `rsync` and the project virtual environment. It runs the Python tests, builds the frontend, packages the Linux dependencies, uploads to S3 and updates CloudFormation.
+This also updates the function configuration so new Lambda instances load the replacement data.
 
-The default region is `us-east-2`; set `AWS_REGION` to change it. The deployment uses IAM permissions for credentials, private S3 storage, response security headers and validation of API parameters.
+## Limits and next steps
 
+- The export contains injury crashes only (K/A/B/C), not property-damage-only crashes.
+- Without traffic volumes or vehicle miles traveled, I can compare counts and severity shares, not crash rates.
+- The data ends on 20 October 2026. Recent counts may change as more reports are added.
+- The pipeline expects the supplied CRIS layout.
+- The public URL has no application-level rate limiting, so heavy traffic can consume the account's allowances or credits.
 
-## Known limitations
+Given more time, I would add request throttling and a validated data-refresh workflow.
 
-- I only have injury crashes (K/A/B/C), not property-damage-only crashes. These are not all-crash totals.
-- I report counts and severity shares, not road risk or crash rates. I do not have traffic volumes or vehicle miles traveled to calculate those rates.
-- The data ends on 20 October 2026. Recent periods may also change as reports are added.
-- The public function URL has no application-level rate limiting. Heavy use could consume the account's allowances or credits.
-- The pipeline expects the supplied CRIS layout. I stop on invalid required fields rather than guessing values or silently dropping crashes.
+## Frontend (bonus)
 
-Given more time, I would add a rate limit and a controlled way to refresh the dataset. I would not add more visual features before those safeguards.
+I built a React frontend in [web](web/) on top of the same API. In Explorer, an analyst can filter the data, inspect severity and time charts, expand the map, open individual crash records and download the selection. The filters stay in the URL so a view can be bookmarked or shared.
 
-## Frontend
+[![Explorer showing the county and severity filters, crash totals, map and severity chart.](docs/assets/explorer.jpg)](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer)
 
-I built a React frontend in [web](web/) on top of the same API. The Explorer lets an analyst filter the same data, view charts and a map, inspect crash records and download the selection.
+Overview provides a 3D view of the located crashes over time. Its visual effects are not measures of road risk.
 
-Overview is an additional 3D view of located crashes. Its effects are visual, not measures of risk.
-
-To run it locally, use Node 22.12+ and keep the API running on port 8000:
+To run the frontend locally, use Node 22.12+ and keep the API running on port 8000:
 
 ```bash
 npm --prefix web ci
@@ -153,7 +183,7 @@ npm --prefix web run dev
 npm --prefix web test
 ```
 
-`npm --prefix web run build` writes the frontend to `roadalyx/web`, which FastAPI serves at `/`. The API runs and can be reviewed without it.
+Vite prints the local URL. `npm --prefix web run build` writes the frontend to `roadalyx/web`, which FastAPI serves at `/`.
 
 ---
 
