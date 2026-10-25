@@ -19,6 +19,8 @@ export function road(v: string | null | undefined) {
   // city streets as on a street sign: "82ND ST" -> "82nd St"
   return m && ROUTE[m[1]] ? `${ROUTE[m[1]]}${m[2]}${m[3]}` : v.toLowerCase().replace(/\b[a-z]/g, (c) => c.toUpperCase());
 }
+/** A street filter slug back to its name: 'us0084' -> 'US 84', 'slide-rd' -> 'Slide Rd'. */
+export const streetName = (s: string) => road(s.toUpperCase().replace(/-/g, ' '));
 export const county = (v: string | null | undefined) => (v ? v.charAt(0) + v.slice(1).toLowerCase() : '–');
 export const dateLong = (iso: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });

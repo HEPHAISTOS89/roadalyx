@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from roadalyx.api import app, handler
+from roadalyx.dataset import slug
 
 client = TestClient(app)
 
@@ -183,3 +184,15 @@ def test_portal_explains_a_missing_build_and_serves_one_built_later(tmp_path, mo
 def test_data_access_tab_opens_the_api_reference():
     r = client.get("/data-access", follow_redirects=False)
     assert r.status_code == 307 and r.headers["location"] == "/api/docs"
+
+
+def test_street_and_location_filters():
+    every = get("/api/v1/breakdown", by="street")["groups"]
+    name = next(r for r in every if r["value"])
+    one = get("/api/v1/severity", street=name["value"])
+    assert one["total"] == name["crashes"] and one["filters"]["street"] == [slug(name["value"])]  # echoed as a slug
+    # the three locations partition the crashes that record one
+    parts = [get("/api/v1/severity", location=loc)["total"] for loc in ("intersection", "segment", "driveway")]
+    assert sum(parts) <= get("/api/v1/severity")["total"]
+    assert client.get("/api/v1/severity", params={"street": "nowhere-rd"}).status_code == 422
+    assert client.get("/api/v1/severity", params={"location": "roundabout"}).status_code == 422

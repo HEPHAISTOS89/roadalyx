@@ -7,19 +7,21 @@ import { Breakdown, CrashCard, Records } from '../components/explorer/Tables';
 import { FactorBars, Heatmap, SeverityBars, TrendChart } from '../components/charts/charts';
 import { TooltipLayer } from '../components/Tooltip';
 import { useApi } from '../lib/api';
-import { api, useFilters } from '../lib/filters';
-import { county, int, pct, title } from '../lib/format';
-import type { FactorsRes, HeatmapRes, Meta, Points, SeverityRes, TrendRes } from '../lib/types';
+import { api, LOCATIONS, toQuery, useFilters, type Location } from '../lib/filters';
+import { county, int, pct, streetName, title } from '../lib/format';
+import type { BreakdownRes, FactorsRes, HeatmapRes, Meta, Points, SeverityRes, TrendRes } from '../lib/types';
 import '../styles/explorer.css';
 
 const AXES = [
   { by: 'year', label: 'Year' }, { by: 'month', label: 'Month' },
   { by: 'hour', label: 'Hour of day' }, { by: 'weekday', label: 'Day of week' },
 ] as const;
+const PLACE: Record<Location, string> = { intersection: 'at intersections', segment: 'on segments', driveway: 'at driveways' };
+const PLACE_LABEL: Record<Location, string> = { intersection: 'Intersection', segment: 'Segment', driveway: 'Driveway' };
 
 /** One sentence stating the selection every number on the page is computed on. */
 function Scope({ meta, total, located }: { meta: Meta; total: number | null; located: number | null }) {
-  const { filters: f } = useFilters();
+  const { filters: f, set } = useFilters();
   const label = (list: { value: string; label: string }[], v: string) => list.find((c) => c.value === v)?.label ?? v;
   const parts = [
     f.county.length ? f.county.map((c) => county(label(meta.filters.county, c))).join(', ') + (f.county.length > 1 ? ' counties' : ' County') : 'all 17 counties',
@@ -28,10 +30,15 @@ function Scope({ meta, total, located }: { meta: Meta; total: number | null; loc
     f.roadClass.length ? f.roadClass.map((r) => title(label(meta.filters.road_class, r))).join(', ') : null,
     f.factor ? `citing “${title(label(meta.filters.factor, f.factor)).toLowerCase()}”` : null,
     f.vru.length ? `involving a ${f.vru.join(' or ')}` : null,
+    f.location ? PLACE[f.location] : null,
   ].filter(Boolean);
   return (
     <p className="scope" aria-live="polite">
       <b className="num">{total == null ? '…' : int(total)}</b> injury crashes · {parts.join(' · ')}
+      {f.street.map((st) => (
+        <button key={st} type="button" className="scope-chip" onClick={() => set({ street: f.street.filter((x) => x !== st) })}
+          aria-label={`Remove the ${streetName(st)} filter`}>on {streetName(st)}<span aria-hidden="true">×</span></button>
+      ))}
       {located != null && total != null && total > located ? <span className="muted"> · {int(total - located)} {total - located === 1
         ? 'crash has no recorded location and is not shown on the map.'
         : 'crashes have no recorded location and are not shown on the map.'}</span> : null}
@@ -51,6 +58,8 @@ export default function Explorer() {
   const factors = useApi<FactorsRes>(api('/factors', query, 'limit=10'));
   const trend = useApi<TrendRes>(api('/trends', query, `by=${axis}`));
   const heat = useApi<HeatmapRes>(api('/heatmap', query));
+  // Corridors are ranked on the selection without the street filter, so the list stays to choose from.
+  const corridors = useApi<BreakdownRes>(api('/breakdown', toQuery({ ...filters, street: [] }), 'by=street&limit=9'));
 
   const selected = params.get('crash') ? Number(params.get('crash')) : null;
   const select = useCallback((id: number | null) => setParams((p) => {
@@ -98,10 +107,25 @@ export default function Explorer() {
 
         <div className="grid-main">
           <section className="panel map-panel" aria-labelledby="map-h">
-            <div className="panel-head"><h2 id="map-h">Map</h2></div>
+            <div className="panel-head">
+              <h2 id="map-h">Map</h2>
+              <fieldset className="seg location" aria-label="Crash location">
+                <legend className="sr-only">Crash location (CRIS Intersection Related)</legend>
+                <button type="button" aria-pressed={!filters.location} onClick={() => set({ location: null })}>All</button>
+                {LOCATIONS.map((l) => (
+                  <button key={l} type="button" aria-pressed={filters.location === l}
+                    onClick={() => set({ location: filters.location === l ? null : l })}
+                    title={l === 'intersection' ? 'At an intersection or intersection-related' : l === 'segment' ? 'Away from intersections (CRIS: non intersection)' : 'At a driveway access'}>
+                    {PLACE_LABEL[l]}
+                  </button>
+                ))}
+              </fieldset>
+            </div>
             <div className="map-wrap" aria-busy={pts.loading}>
               {pts.loading && <p className="map-loading" role="status">Updating map…</p>}
-              <CrashMap points={pts.data} selected={selected} onSelect={select} />
+              <CrashMap points={pts.data} selected={selected} onSelect={select}
+                corridors={corridors.data?.groups.filter((g) => g.value).slice(0, 8) ?? []} street={filters.street}
+                onStreet={(st) => set({ street: st ? [st] : [] })} />
             </div>
           </section>
           <div className="side">

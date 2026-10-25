@@ -8,7 +8,8 @@ import { ArrowClockwiseIcon, ArrowCounterClockwiseIcon, CaretDownIcon, CaretUpIc
 import counties from '../../data/counties.json';
 import CanvasMap from '../maps/CanvasMap';
 import { supportsWebGL2 } from '../../lib/map2d';
-import type { Points } from '../../lib/types';
+import type { Group, Points } from '../../lib/types';
+import { slug } from '../../lib/filters';
 import { int, pct, road } from '../../lib/format';
 
 const DISTRICT: [[number, number], [number, number]] = [[-103.07, 32.52], [-101.04, 34.75]];
@@ -74,21 +75,24 @@ interface Props {
   points: Points | null;
   selected: number | null;
   onSelect: (id: number | null) => void;
+  /** Streets ranked by crashes in the selection (street filter left out), from /breakdown?by=street. */
+  corridors?: Group[];
+  street?: string[];
+  onStreet?: (slug: string | null) => void;
 }
 
 /** Crash locations on a basemap: K and A drawn last and largest, click a mark to open its record. */
-export default function CrashMap({ points, selected, onSelect }: Props) {
+export default function CrashMap({ points, selected, onSelect, corridors: ranked = [], street = [], onStreet }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<MlMap | null>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(() => !supportsWebGL2());
   const [mode, setMode] = useState<Mode>('crashes');
   const [tilted, setTilted] = useState(false);
-  // Corridor under the pointer in the list, and the one clicked (kept until clicked again).
-  const [hoverRoad, setHoverRoad] = useState<number | null>(null);
-  const [pinned, setPinned] = useState<number | null>(null);
+  // The corridor under the pointer in the list: its crashes stay lit, the rest fade.
+  const [hoverRoad, setHoverRoad] = useState<string | null>(null);
   const [showRoads, setShowRoads] = useState(() => window.innerWidth > 700);
-  const corridor = hoverRoad ?? pinned;
+  const corridor = hoverRoad && points?.streets ? points.streets.indexOf(hoverRoad) : null;
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const select = useRef(onSelect);
@@ -236,30 +240,20 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
   }, [failed]);
 
   const start = useRef('2020-01-01');
-  // The streets with the most located crashes in the current selection, and their K+A share.
-  const corridors = useMemo(() => {
-    if (!points?.streets) return [];
-    const crashes = new Map<number, { n: number; ka: number }>();
-    points.street.forEach((st, i) => {
-      if (st < 0) return;
-      const c = crashes.get(st) ?? { n: 0, ka: 0 };
-      c.n++;
-      if (points.severity[i] === 'K' || points.severity[i] === 'A') c.ka++;
-      crashes.set(st, c);
-    });
-    return [...crashes].sort((a, b) => b[1].n - a[1].n).slice(0, 8)
-      .map(([st, c]) => ({ st, name: road(points.streets[st]), crashes: c.n, ka: c.ka / c.n }));
-  }, [points]);
-  useEffect(() => { setPinned(null); setHoverRoad(null); }, [points]);
+  const corridors = useMemo(() => ranked.map((g) => ({
+    raw: String(g.value), key: slug(String(g.value)), name: road(String(g.value)), crashes: g.crashes, ka: g.ka_share ?? 0,
+  })), [ranked]);
+  useEffect(() => { setHoverRoad(null); }, [points]);
   useEffect(() => {
     const m = map.current;
     if (!ready || !m) return;
     m.setLayoutProperty('density', 'visibility', mode === 'hotspots' ? 'visible' : 'none');
     const on = ['==', ['get', 'st'], corridor ?? -2];
+    const lit = corridor != null && corridor >= 0;
     // A chosen corridor keeps its crashes and fades the rest, in both views.
-    m.setPaintProperty('crash', 'circle-opacity', (corridor == null ? POINT_OPACITY[mode]
+    m.setPaintProperty('crash', 'circle-opacity', (!lit ? POINT_OPACITY[mode]
       : ['case', on, mode === 'hotspots' ? 0.95 : POINT_OPACITY.crashes, 0.07]) as never);
-    m.setFilter('density', corridor == null ? null : on as never);
+    m.setFilter('density', !lit ? null : on as never);
   }, [ready, mode, corridor]);
   // Camera pad: hold a button to keep turning or tilting; a click (or Enter) moves one step.
   const spin = useRef(0);
@@ -283,16 +277,7 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
     },
   });
   useEffect(() => () => cancelAnimationFrame(spin.current), []);
-  const pin = (st: number) => {
-    const next = pinned === st ? null : st;
-    setPinned(next);
-    const m = map.current;
-    if (next == null || !m || !points) return;
-    const lon: number[] = [], lat: number[] = [];
-    points.street.forEach((s, i) => { if (s === next) { lon.push(points.lon[i]); lat.push(points.lat[i]); } });
-    m.fitBounds([[Math.min(...lon), Math.min(...lat)], [Math.max(...lon), Math.max(...lat)]],
-      { padding: { top: 60, bottom: 60, left: showRoads ? 280 : 60, right: 60 }, maxZoom: 14, duration: reduced() ? 0 : 800 });
-  };
+
   useEffect(() => {
     const m = map.current;
     if (!ready || !m) return;
@@ -315,7 +300,8 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
     if (points.lon.length) {
       const bounds: [[number, number], [number, number]] = [
         [Math.min(...points.lon), Math.min(...points.lat)], [Math.max(...points.lon), Math.max(...points.lat)]];
-      map.current.fitBounds(bounds, { padding: 40, maxZoom: 12, duration: reduced() ? 0 : 600 });
+      // leave room for the corridors list on the left
+      map.current.fitBounds(bounds, { padding: { top: 60, bottom: 40, right: 50, left: showRoads ? 290 : 40 }, maxZoom: 12, duration: reduced() ? 0 : 600 });
     }
   }, [ready, points]);
 
@@ -340,13 +326,14 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
       </ul>
       {showRoads && corridors.length > 0 && (
         <section className="corridors" aria-labelledby="corr-h">
-          <h3 id="corr-h">Top corridors<span>located crashes · K+A share</span></h3>
+          <h3 id="corr-h">Top corridors<span>crashes in the selection · K+A share</span></h3>
           <ol onMouseLeave={() => setHoverRoad(null)}>
             {corridors.map((c, i) => (
-              <li key={c.st}>
-                <button type="button" aria-pressed={pinned === c.st} onMouseEnter={() => setHoverRoad(c.st)}
-                  onFocus={() => setHoverRoad(c.st)} onBlur={() => setHoverRoad(null)} onClick={() => pin(c.st)}
-                  aria-label={`${c.name}: ${int(c.crashes)} located crashes, ${pct(c.ka)} fatal or serious. ${pinned === c.st ? 'Show all crashes' : 'Show only this corridor'}.`}>
+              <li key={c.key}>
+                <button type="button" aria-pressed={street.includes(c.key)} onMouseEnter={() => setHoverRoad(c.raw)}
+                  onFocus={() => setHoverRoad(c.raw)} onBlur={() => setHoverRoad(null)}
+                  onClick={() => { setHoverRoad(null); onStreet?.(street.includes(c.key) ? null : c.key); }}
+                  aria-label={`${c.name}: ${int(c.crashes)} crashes, ${pct(c.ka)} fatal or serious. ${street.includes(c.key) ? 'Remove the street filter' : 'Filter the whole page to this street'}.`}>
                   <span className="num rank">{i + 1}</span>
                   <span className="name">{c.name}</span>
                   <span className="num">{int(c.crashes)}</span>
@@ -356,6 +343,7 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
               </li>
             ))}
           </ol>
+          <p className="corridors-note">Click a street to filter the whole page. These are crash counts, not rates: without traffic volumes (AADT), a busy road ranks high because it carries more vehicles.</p>
         </section>
       )}
       {tilted && (

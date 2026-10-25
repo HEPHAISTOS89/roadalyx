@@ -6,6 +6,13 @@
 }
 .scope { font-size: var(--t-label); color: var(--ink-2); }
 .scope b { color: var(--ink); font-weight: 600; }
+.scope-chip {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; padding: 1px 4px 1px 9px; border-radius: var(--r-pill);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--ink); font: inherit; font-weight: 560; cursor: pointer;
+}
+.scope-chip span { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: var(--ink-2); }
+.scope-chip:hover span, .scope-chip:focus-visible span { background: var(--raise); color: var(--ink); }
 
 /* Filters */
 .filters { display: grid; gap: var(--s2); }
@@ -246,6 +253,8 @@ table.data tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparen
 .corridors .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .corridors .ka { height: 4px; border-radius: 2px; background: var(--rule-2); overflow: hidden; }
 .corridors .ka i { display: block; height: 100%; background: var(--sev-k); }
+.corridors-note { margin: 6px 6px 2px; padding-top: 7px; border-top: 1px solid var(--rule); font-size: var(--t-micro); line-height: 1.45; color: var(--ink-3); }
+.seg.location button { padding: 5px 11px; font-size: var(--t-label); }
 .corridors .ka-v { font-size: var(--t-micro); color: var(--ink-3); text-align: right; }
 .map-modes > div { display: inline-flex; padding: 3px; border-radius: var(--r-m); background: rgba(14, 15, 14, 0.9); border: 1px solid var(--rule-2); }
 .map-modes button { border: 0; background: none; padding: 6px 12px; border-radius: calc(var(--r-m) - 2px); color: var(--ink-2); font-size: var(--t-label); cursor: pointer; }

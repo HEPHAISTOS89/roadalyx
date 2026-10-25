@@ -121,6 +121,9 @@ def filters(
     road_class: Annotated[list[str], Query(description="CRIS road class or slug, e.g. interstate, city-street.")] = [],
     factor: Annotated[str | None, Query(max_length=120, description="Only crashes citing this contributing factor (name or slug).")] = None,
     vru: Annotated[list[str], Query(description="Crashes involving a pedestrian, pedalcyclist or motorcyclist.")] = [],
+    street: Annotated[list[str], Query(description="CRIS street name or slug, e.g. US0084, slide-rd. Repeat or comma-separate.")] = [],
+    location: Annotated[Literal["intersection", "segment", "driveway"] | None,
+                        Query(description="Intersection or intersection-related, segment (non-intersection), or driveway access.")] = None,
 ) -> Filters:
     opts = data().options
     if year_from is not None and year_to is not None and year_from > year_to:
@@ -137,7 +140,17 @@ def filters(
         road_class=_known("road_class", road_class, [o["value"] for o in opts["road_class"]]),
         vru=_known("vru", vru, opts["vru"]),
         year_from=year_from, year_to=year_to, factor=factor_slug,
+        street=_streets(street), location=location,
     )
+
+
+def _streets(values: list[str]) -> frozenset[str]:
+    chosen = {slug(v) for raw in values for v in raw.split(",") if v.strip()}
+    unknown = chosen - data().streets
+    if unknown:
+        raise HTTPException(422, {"parameter": "street", "unknown": sorted(unknown),
+                                  "message": "no crash on this street; see /api/v1/breakdown?by=street"})
+    return frozenset(chosen)
 
 
 FilterDep = Annotated[Filters, Depends(filters)]

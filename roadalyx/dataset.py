@@ -47,6 +47,8 @@ class Dataset:
             "severity": ["K", "A", "B", "C"],
             "vru": list(VRU_TYPES),
         }
+        # Street filter values: 1,300+ names, so they are checked here rather than listed in /meta.
+        self.streets = {slug(c["street"]) for c in self.crashes if c["street"]}
 
 
 def _choices(values) -> list[dict]:

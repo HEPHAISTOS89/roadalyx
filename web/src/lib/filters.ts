@@ -6,7 +6,12 @@ import type { Sev } from './types';
 export interface Filters {
   county: string[]; severity: Sev[]; roadClass: string[]; vru: string[];
   yearFrom: number | null; yearTo: number | null; factor: string | null;
+  street: string[]; location: Location | null;
 }
+
+/** Crash location in HSM terms (CRIS "Intersection Related"). */
+export const LOCATIONS = ['intersection', 'segment', 'driveway'] as const;
+export type Location = (typeof LOCATIONS)[number];
 
 /** Same rule as roadalyx.dataset.slug: filters compare slugs, so 'US & STATE HIGHWAYS' = 'us-state-highways'. */
 export const slug = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -22,6 +27,8 @@ export function parseFilters(q: URLSearchParams): Filters {
     yearFrom: num(q.get('year_from')),
     yearTo: num(q.get('year_to')),
     factor: q.get('factor') ? slug(q.get('factor')!) || null : null,
+    street: list(q.get('street')),
+    location: (LOCATIONS as readonly string[]).includes(q.get('location') ?? '') ? q.get('location') as Location : null,
   };
 }
 
@@ -35,10 +42,12 @@ export function toQuery(f: Filters): string {
   if (f.yearFrom != null) q.set('year_from', String(f.yearFrom));
   if (f.yearTo != null) q.set('year_to', String(f.yearTo));
   if (f.factor) q.set('factor', f.factor);
+  if (f.street.length) q.set('street', f.street.join(','));
+  if (f.location) q.set('location', f.location);
   return q.toString();
 }
 
-export const NO_FILTERS: Filters = { county: [], severity: [], roadClass: [], vru: [], yearFrom: null, yearTo: null, factor: null };
+export const NO_FILTERS: Filters = { county: [], severity: [], roadClass: [], vru: [], yearFrom: null, yearTo: null, factor: null, street: [], location: null };
 
 export function isEmpty(f: Filters) {
   return toQuery(f) === '';
@@ -51,7 +60,7 @@ export function useFilters() {
     setParams((prev) => {
       const merged = { ...parseFilters(prev), ...next };
       const q = new URLSearchParams(toQuery(merged));
-      for (const [k, v] of prev) if (!['county', 'severity', 'road_class', 'vru', 'year_from', 'year_to', 'factor'].includes(k)) q.set(k, v);
+      for (const [k, v] of prev) if (!['county', 'severity', 'road_class', 'vru', 'year_from', 'year_to', 'factor', 'street', 'location'].includes(k)) q.set(k, v);
       return q;
     }, { replace: true });
   }, [setParams]);

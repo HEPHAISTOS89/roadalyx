@@ -17,6 +17,8 @@ class AppliedFilters(BaseModel):
     year_from: int | None
     year_to: int | None
     factor: str | None
+    street: list[str]
+    location: str | None
 
 
 class Filtered(BaseModel):
