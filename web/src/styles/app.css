@@ -47,7 +47,8 @@ main:focus { outline: none; }
   font-size: var(--t-label); font-weight: 520; white-space: nowrap; text-decoration: none;
   transition: color 200ms var(--ease), transform 160ms var(--ease);
 }
-.seg > button:hover, .seg > a:hover { color: var(--ink); }
+/* hover darkens the idle options only; the selected one keeps its colour on the ink thumb */
+.seg > :is(button, a):hover:not([aria-pressed='true'], [aria-selected='true'], [aria-current='page']) { color: var(--ink); }
 .seg > button:active, .seg > a:active { transform: scale(0.96); }
 .seg > [aria-pressed='true'], .seg > [aria-selected='true'], .seg > [aria-current='page'] { color: var(--accent-ink); }
 .seg > button:disabled { opacity: 0.4; cursor: default; }
