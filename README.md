@@ -132,17 +132,24 @@ python -m nbconvert --to notebook --execute --inplace notebooks/eda.ipynb
 
 **One row is a person, not a crash.** The export has 67,906 rows for 24,261 crashes: every driver, passenger and pedestrian gets a row, and the crash's fields are copied onto each of them. Counting rows would count a four-person crash four times. I checked that the copied crash fields never disagree inside a crash, then built one record per Crash ID. The result matches the export's own header (24,261 crashes).
 
-The other problems, and what I do about them:
+I keep **all 24,261 supplied crashes**, including **782 marked non-reportable**. In this file, those 782 also have Road Class `NON TRAFFICWAY`. I do not remove them: the task asks me to analyze the supplied export, whose header includes them. The results below and the portal use this full set, not reportable crashes only.
 
-| Problem in the file | What I do | Why |
+I also found **295 extra identical person rows in 50 crashes**. I keep them because the export has no unique person ID to establish whether they are duplicate entries or different people with the same recorded values. They do not change the three crash-level results. The record view's person count is a count of source rows, not independently verified unique people.
+
+The other findings and formats I checked:
+
+| Finding or format | What I do | Why |
 |---|---|---|
-| 11 lines of disclaimer and a byte-order mark before the header | Find the header row by its first cell | Works for any CRIS export, whatever its filter list |
+| 11 lines of disclaimer and a byte-order mark before the header | Find the header row by its first cell | Skips the preamble without assuming a fixed number of lines |
 | Factors separated by `;` in some rows, `; ` in others | Split on `;`, trim, count each factor once per crash | Otherwise *Failed to control speed* counts as two factors (5,018 + 541) |
-| `NONE` and `OTHER (EXPLAIN IN NARRATIVE)` in the factors | Kept in the data, left out of the ranking | They say no factor was coded |
+| `NONE` and `OTHER (EXPLAIN IN NARRATIVE)` in the factors | Kept in the data, left out of the ranking | They do not identify a specific coded factor |
 | 849 crashes without coordinates (`No Data`) | Kept in every count, left off the map | A missing location does not remove a crash |
-| Speed limit `-1`; time stored as HHMM (`5` = 00:05) | `-1` becomes missing; times become hour and HH:MM | `-1` is a code, not a speed |
+| Speed limit `-1` | Store as missing | `-1` is a code, not a speed |
+| Four-digit HHMM times, such as `0140` | Read as 01:40 and derive the hour | Preserve leading zeros when reading the CSV |
 | Yes/No, YES/NO and true/false in flag columns | Converted to true/false | One spelling per answer |
 | 2026 ends on 20 October | Marked as a partial year and month | So 2026 does not look like a drop |
+
+County names and factor labels are already uppercase in this file. I still normalize case as a precaution; the observed factor-label problem is the spacing after semicolons.
 
 The full reasoning, with the code that checks each point, is in the [EDA notebook](notebooks/eda.ipynb).
 
@@ -188,6 +195,15 @@ The full reasoning, with the code that checks each point, is in the [EDA noteboo
 
 The 624 fatal crashes killed 707 people. A crash can cite several factors, so factor shares do not add up to 100%. The API also gives the time pattern by month, hour of day and day of the week.
 
+**The fifth factor depends on the scope.** With all supplied crashes, *Unsafe speed* is fifth, only 18 crashes ahead of *Disregard stop and go signal*. Restricting the analysis to the 23,479 reportable crashes reverses their order:
+
+| Factor | All supplied crashes | Reportable only |
+|---|---:|---:|
+| Unsafe speed | 2,034 | 2,011 |
+| Disregard stop and go signal | 2,016 | 2,016 |
+
+I show this comparison in the EDA. I have not added a reportable-only filter to the API or portal.
+
 ## The API
 
 FastAPI, read-only (`GET`), with the interactive reference at [`/api/docs`](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs). I designed the endpoints around the questions an analyst or a dashboard asks:
@@ -204,7 +220,9 @@ FastAPI, read-only (`GET`), with the interactive reference at [`/api/docs`](http
 | Points for a map | `/api/v1/points` |
 | What can I filter on? Is the service up? | `/api/v1/meta` · `/api/health` |
 
-**The same 7 filters work on every data endpoint**, combined with AND: `county`, `severity`, `year_from`, `year_to`, `road_class`, `factor`, `vru` (pedestrian, pedalcyclist, motorcyclist). Values are case-insensitive, and a list can be comma-separated.
+The aggregate and search endpoints share seven filters, combined with AND: `county`, `severity`, `year_from`, `year_to`, `road_class`, `factor` and `vru` (pedestrian, pedalcyclist, motorcyclist).
+
+`county`, `severity`, `road_class` and `vru` accept several values, either comma-separated or repeated in the URL. `factor` accepts one factor. `year_from` and `year_to` each accept one integer. Text filter values are case-insensitive.
 
 ```bash
 curl 'https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/v1/severity?county=hale&severity=K,A'
@@ -218,7 +236,7 @@ curl 'https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/v
 }
 ```
 
-Every answer repeats the filters it applied and the number of matching crashes, so a number never travels without its selection. An unknown value returns **422 with the list of valid values**, instead of an empty answer that would look like zero crashes. The CSV export is gzip-compressed (browsers, pandas and `requests` decode it automatically; add `--compressed` with curl):
+Filtered JSON responses include the applied filters and matching crash count. An unknown county returns **422 with the valid county values**; an unknown factor returns 422 and points to `/api/v1/meta`. A valid year range outside the export, such as `year_from=2030`, returns zero crashes. This means no observations in that period, not an invalid year. The CSV export is gzip-compressed (browsers, pandas and `requests` decode it automatically; add `--compressed` with curl):
 
 ```python
 import pandas as pd
@@ -312,9 +330,9 @@ scripts/deploy.sh data               # after processing a new export: upload the
 
 ## Scope decisions
 
-With a few hours for the task, I put the time where a mistake would change the answer: counting crashes instead of people, splitting the factor lists correctly, and flagging the partial year. The notebook and the tests check each of these against the totals in the export's header.
+I prioritized the three required results: count crashes rather than person rows, split the factor lists correctly, and mark the partial year. The notebook and tests check those results against the export. I kept the supplied scope and used the EDA to show how excluding non-reportable crashes would change the ranking, rather than adding another portal filter.
 
-Everything else stays small: one set of filters shared by every endpoint, one Lambda function reading one file, and one frontend built on the same API. I did not add user accounts, a database or rate limiting; a read-only dataset of 24,261 crashes does not need them yet.
+I use one filter implementation for the aggregate and search endpoints, one Lambda function reading one file, and a frontend built on the same API. I did not add user accounts or a database. I left rate limiting out of this assessment and would add it before wider public use.
 
 ## Limitations and what I would do next
 
