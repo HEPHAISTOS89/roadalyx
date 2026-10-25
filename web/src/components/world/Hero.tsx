@@ -236,19 +236,10 @@ export default function Hero() {
       </div>
 
       <div className="hero-side">
-        <Seg className="hero-views hero-modes" role="group" aria-label="Map view">
-          <button type="button" aria-pressed={mode === 'lights'} onClick={() => setMode('lights')} disabled={broken || fallback}>Crashes</button>
-          <button type="button" aria-pressed={mode === 'columns'} onClick={() => setMode('columns')} disabled={broken || fallback}
-            title="Crashes per 2.6 km hexagon: height for the count, colour for the share of fatal and serious">Columns</button>
-        </Seg>
         <Seg className="hero-views" role="group" aria-label="Camera">
           <button type="button" aria-pressed={view === 'district'} onClick={() => go('district')} disabled={broken}>District</button>
           <button type="button" aria-pressed={view === 'lubbock'} onClick={() => go('lubbock')} disabled={broken}>Lubbock</button>
         </Seg>
-        {mode === 'columns' && (
-          <p className="hero-key" title="Each column is a 2.6 km hexagon. Its K+A share is adjusted towards the district mean when it has few crashes (empirical Bayes).">
-            Height = crashes<span>K+A share</span><b>4%</b><i aria-hidden="true" /><b>20%+</b></p>
-        )}
         {canFull && (
           <button type="button" className="icon-btn hero-full" onClick={toggleFull} aria-pressed={full}
             aria-label={full ? 'Exit full screen' : 'Full screen'} title={full ? 'Exit full screen' : 'Full screen'}>
@@ -298,14 +289,32 @@ export default function Hero() {
             <span className="num">{days ? int(upTo(days.all, shownDay)) : '–'}</span> mapped through this date
           </p>
         </div>
-        <dl className="hud-legend" aria-label="Cumulative mapped crashes through the displayed date by severity">
-          {LEGEND.map(([code, label]) => (
-            <div key={code} className={`sev-${code.toLowerCase()}`}>
-              <dt><i aria-hidden="true" /><b>{code}</b> {label}</dt>
-              <dd className="num">{days ? int(upTo(days.by[code], shownDay)) : '–'}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="hud-end">
+          <div className="hud-view">
+            <Seg role="group" aria-label="What the map shows">
+              <button type="button" aria-pressed={mode === 'lights'} onClick={() => setMode('lights')} disabled={broken || fallback}>Crashes</button>
+              <button type="button" aria-pressed={mode === 'columns'} onClick={() => setMode('columns')} disabled={broken || fallback}>Columns</button>
+            </Seg>
+            <p className="hud-why">{mode === 'lights'
+              ? 'Each crash where it happened. Posts: fatal and serious.'
+              : 'Where crashes pile up, and where they are worst.'}</p>
+          </div>
+          {mode === 'lights' ? (
+          <dl className="hud-legend" aria-label="Cumulative mapped crashes through the displayed date by severity">
+            {LEGEND.map(([code, label]) => (
+              <div key={code} className={`sev-${code.toLowerCase()}`}>
+                <dt><i aria-hidden="true" /><b>{code}</b> {label}</dt>
+                <dd className="num">{days ? int(upTo(days.by[code], shownDay)) : '–'}</dd>
+              </div>
+            ))}
+          </dl>
+          ) : (
+            <dl className="hud-legend hud-key" title="Each column is a 2.6 km hexagon. Its K+A share is pulled towards the district mean when it has few crashes (empirical Bayes, as in the HSM).">
+              <div><dt>Height</dt><dd>Crashes</dd></div>
+              <div><dt>Colour · K+A share</dt><dd className="hud-ramp"><span>4%</span><i aria-hidden="true" /><span>20%+</span></dd></div>
+            </dl>
+          )}
+        </div>
       </div>
     </section>
   );

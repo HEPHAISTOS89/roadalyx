@@ -123,15 +123,18 @@
   .hud-years i:first-child, .hud-years i:last-child { display: block; }
 }
 
-/* Map view switch on its own row; the Columns key under the camera buttons. */
-.hero-side .hero-modes { grid-column: 1 / -1; }
-.hero-key {
-  grid-column: 1 / -1; order: 9; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--r-pill);
-  background: var(--panel); box-shadow: var(--shadow-pop); font-size: var(--t-micro); color: var(--ink-2); animation: pop 240ms var(--spring);
+/* What the map shows sits with its legend, at the end of the timeline bar; the camera stays top right. */
+.hud-end { display: flex; align-items: center; gap: var(--s5); padding-left: var(--s5); box-shadow: -1px 0 0 var(--rule-soft); }
+.hud-end .hud-legend { padding-left: 0; box-shadow: none; }
+.hud-view { display: grid; gap: 4px; justify-items: start; }
+.hud-why { margin: 0; max-width: 220px; font-size: var(--t-micro); line-height: 1.35; color: var(--ink-3); }
+.hud-key dd { font-size: var(--t-ui); font-weight: 560; }
+.hud-ramp { display: flex; align-items: center; gap: 6px; }
+.hud-ramp span { font-size: var(--t-micro); font-weight: 500; color: var(--ink-3); }
+.hud-ramp i { width: 64px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #5a5a5a, var(--sev-k)); }
+[data-theme='light'] .hud-ramp i { background: linear-gradient(90deg, #c9c4ba, var(--sev-k)); }
+@media (max-width: 1060px) {
+  .hud-end { grid-column: 1 / -1; justify-content: space-between; flex-wrap: wrap; padding-left: 0; box-shadow: none; }
+  .hud-view { display: flex; align-items: center; gap: var(--s3); }
+  .hero-hint { display: none; }
 }
-.hero-key span { color: var(--ink-3); }
-.hero-key span:first-of-type { margin-left: 6px; }
-.hero-key { white-space: nowrap; justify-self: end; }
-.hero-key b { font-weight: 500; color: var(--ink-3); }
-.hero-key i { width: 56px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #5a5a5a, var(--sev-k)); }
-[data-theme='light'] .hero-key i { background: linear-gradient(90deg, #c9c4ba, var(--sev-k)); }

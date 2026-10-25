@@ -555,7 +555,7 @@ export function createWorld(o: WorldOptions): World {
     cells.forEach((c, i) => {
       const all = upTo(c.all, day), ka = upTo(c.ka, day);
       // square root, so a rural cell with a few crashes still stands out from the plain
-      const h = all ? 0.8 + 70 * Math.sqrt(all / maxCell) : 0.001;
+      const h = all ? 0.8 + 52 * Math.sqrt(all / maxCell) : 0.001;
       mtx.makeScale(1, h, 1).setPosition(c.at.x, 0.05, c.at.z);
       columns.setMatrixAt(i, mtx);
       if (i === hoveredCell) columns.setColorAt(i, col.set(C.picked));
