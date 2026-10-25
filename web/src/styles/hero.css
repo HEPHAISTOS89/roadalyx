@@ -122,3 +122,16 @@
   .hud-years i { display: none; }
   .hud-years i:first-child, .hud-years i:last-child { display: block; }
 }
+
+/* Map view switch on its own row; the Columns key under the camera buttons. */
+.hero-side .hero-modes { grid-column: 1 / -1; }
+.hero-key {
+  grid-column: 1 / -1; order: 9; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--r-pill);
+  background: var(--panel); box-shadow: var(--shadow-pop); font-size: var(--t-micro); color: var(--ink-2); animation: pop 240ms var(--spring);
+}
+.hero-key span { color: var(--ink-3); }
+.hero-key span:first-of-type { margin-left: 6px; }
+.hero-key { white-space: nowrap; justify-self: end; }
+.hero-key b { font-weight: 500; color: var(--ink-3); }
+.hero-key i { width: 56px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, #5a5a5a, var(--sev-k)); }
+[data-theme='light'] .hero-key i { background: linear-gradient(90deg, #c9c4ba, var(--sev-k)); }

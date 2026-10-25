@@ -66,6 +66,8 @@ export interface WorldOptions {
   onDay: (day: number) => void;
   onHover: (county: string | null, x: number, y: number, road: string | null) => void;
   onSelect: (county: string | null) => void;
+  /** The column under the pointer in the Columns view, counted up to the timeline date. */
+  onCell?: (cell: { crashes: number; k: number; ka: number; roads: string[] } | null, x: number, y: number) => void;
 }
 
 export interface World {
@@ -76,6 +78,7 @@ export interface World {
   view(name: 'district' | 'lubbock'): void;
   focus(county: string | null): void;
   setActive(active: boolean): void;
+  setMode(mode: 'lights' | 'columns'): void;
   dispose(): void;
 }
 
@@ -482,6 +485,90 @@ export function createWorld(o: WorldOptions): World {
   rings.renderOrder = 3;
   scene.add(rings);
 
+  // Columns: crashes binned in hexagons of HEX km. Height grows with the crashes up to the timeline date,
+  // colour with the share of fatal and serious (K+A) among them. Lit, so the relief reads as relief.
+  const HEX = 2.6;
+  const cellsByKey = new Map<string, { at: THREE.Vector3; all: number[]; ka: number[]; k: number[]; streets: Map<number, number> }>();
+  for (let i = 0; i < n; i++) {
+    const p = project(points.lon[i], points.lat[i]);
+    // axial hex coordinates (pointy-top), rounded to the nearest cell
+    const q = ((Math.sqrt(3) / 3) * p.x - (1 / 3) * p.z) / HEX, r = ((2 / 3) * p.z) / HEX;
+    let rx = Math.round(q), rz = Math.round(r);
+    const ry = Math.round(-q - r);
+    const dx = Math.abs(rx - q), dz = Math.abs(rz - r), dy = Math.abs(ry - (-q - r));
+    if (dx > dz && dx > dy) rx = -ry - rz; else if (dz > dy) rz = -rx - ry;
+    const key = `${rx},${rz}`;
+    let c = cellsByKey.get(key);
+    if (!c) {
+      c = { at: new THREE.Vector3(HEX * Math.sqrt(3) * (rx + rz / 2), 0, HEX * 1.5 * rz), all: [], ka: [], k: [], streets: new Map() };
+      cellsByKey.set(key, c);
+    }
+    const s = points.severity[i], d = points.day[i];
+    c.all.push(d);
+    if (s === 'K' || s === 'A') c.ka.push(d);
+    if (s === 'K') c.k.push(d);
+    const st = points.street?.[i] ?? -1;
+    if (st >= 0) c.streets.set(st, (c.streets.get(st) ?? 0) + 1);
+  }
+  const cells = [...cellsByKey.values()];
+  for (const c of cells) { c.all.sort((a, b) => a - b); c.ka.sort((a, b) => a - b); c.k.sort((a, b) => a - b); }
+  const upTo = (sorted: number[], x: number) => {
+    let lo = 0, hi = sorted.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (sorted[mid] <= x) lo = mid + 1; else hi = mid; }
+    return lo;
+  };
+  const maxCell = Math.max(...cells.map((c) => c.all.length), 1);
+  const kaMean = cells.reduce((a, c) => a + c.ka.length, 0) / Math.max(n, 1);
+  const EB_WEIGHT = 25; // crashes of prior: a cell needs about this many before its own share dominates
+  const prism = new THREE.CylinderGeometry(HEX * 0.86, HEX * 0.86, 1, 6, 1);
+  prism.rotateY(Math.PI / 6);
+  prism.translate(0, 0.5, 0); // base on the ground, so scaling y grows the column upwards
+  const columns = new THREE.InstancedMesh(prism, new THREE.MeshLambertMaterial({ color: 0xffffff }), cells.length);
+  columns.visible = false;
+  columns.renderOrder = 5;
+  scene.add(columns);
+  scene.add(new THREE.HemisphereLight(0xffffff, o.light ? 0xb9b2a6 : 0x202020, o.light ? 2.2 : 1.6));
+  const sun = new THREE.DirectionalLight(0xffffff, o.light ? 1.6 : 2.4);
+  sun.position.set(-120, 260, 160);
+  // Real cast shadows: a low sun from the south-west lays each column's shadow across the plain.
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -170, right: 170, top: 170, bottom: -170, near: 50, far: 700 });
+  sun.shadow.bias = -0.0005;
+  columns.castShadow = true;
+  const shade = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: o.light ? 0.18 : 0.55, depthWrite: false }));
+  shade.rotation.x = -Math.PI / 2;
+  shade.position.y = 0.04;
+  shade.receiveShadow = true;
+  shade.renderOrder = 4.5;
+  shade.visible = false;
+  scene.add(shade);
+  scene.add(sun);
+  const LOW = new THREE.Color(o.light ? 0xc9c4ba : 0x5a5a5a), HIGH = new THREE.Color(C.sev[0]);
+  const mtx = new THREE.Matrix4(), col = new THREE.Color();
+  let columnsDay = -1;
+  const growColumns = (day: number) => {
+    if (day === columnsDay) return;
+    columnsDay = day;
+    cells.forEach((c, i) => {
+      const all = upTo(c.all, day), ka = upTo(c.ka, day);
+      // square root, so a rural cell with a few crashes still stands out from the plain
+      const h = all ? 0.8 + 70 * Math.sqrt(all / maxCell) : 0.001;
+      mtx.makeScale(1, h, 1).setPosition(c.at.x, 0.05, c.at.z);
+      columns.setMatrixAt(i, mtx);
+      if (i === hoveredCell) columns.setColorAt(i, col.set(C.picked));
+      // Empirical Bayes, as in the HSM: a cell with few crashes is pulled towards the district share, so one
+      // fatal crash on an empty road does not paint it as the worst place in the district.
+      else columns.setColorAt(i, col.copy(LOW).lerp(HIGH, all ? THREE.MathUtils.clamp(((ka + EB_WEIGHT * kaMean) / (all + EB_WEIGHT) - 0.04) / 0.16, 0, 1) : 0));
+    });
+    columns.instanceMatrix.needsUpdate = true;
+    if (columns.instanceColor) columns.instanceColor.needsUpdate = true;
+  };
+  let mode: 'lights' | 'columns' = 'lights';
+  let hoveredCell = -1;
+
   // Bloom gives the lights their glow; it reads the HDR-ish additive sum, so dense corridors glow more.
   // The composer's own target is multisampled: without it the thin county lines break into dashes.
   const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType }));
@@ -549,6 +636,22 @@ export function createWorld(o: WorldOptions): World {
       touch();
       return;
     }
+    if (mode === 'columns') {
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      const c = raycaster.intersectObject(columns)[0]?.instanceId ?? -1;
+      if (c !== hoveredCell) { hoveredCell = c; columnsDay = -1; dirty = true; }
+      if (c >= 0) {
+        const cell = cells[c], day = uniforms.uDay.value;
+        const roads = [...cell.streets.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([st]) => points.streets?.[st] ?? '').filter(Boolean);
+        o.onCell?.({ crashes: upTo(cell.all, day), k: upTo(cell.k, day), ka: upTo(cell.ka, day), roads }, e.clientX - r.left, e.clientY - r.top);
+        canvas.style.cursor = 'default';
+        if (hovered) { hovered = null; paint(); }
+        o.onHover(null, 0, 0, null);
+        return;
+      }
+      o.onCell?.(null, 0, 0);
+    }
     const hit = hitAt(e);
     if (hit !== hovered) {
       hovered = hit;
@@ -596,6 +699,7 @@ export function createWorld(o: WorldOptions): World {
     paint();
     if (road && picked) { road = null; picked.material.opacity = 0; dirty = true; }
     o.onHover(null, 0, 0, null);
+    o.onCell?.(null, 0, 0);
   };
   const wheel = (e: WheelEvent) => {
     e.preventDefault();
@@ -663,6 +767,7 @@ export function createWorld(o: WorldOptions): World {
     const k = THREE.MathUtils.clamp(Math.sqrt(330 / cam.radius), 1, 2.6);
     for (const [m, base] of roadWidths) m.linewidth = base * k;
     if (streets) streets.material.opacity = THREE.MathUtils.clamp(0.75 - cam.radius / 700, 0.28, 0.62);
+    if (mode === 'columns') growColumns(Math.round(Math.min(uniforms.uDay.value, lastDay)));
     composer.render();
     const { clientWidth: w, clientHeight: h } = host;
     // Larger places first; a label that would overlap one already placed is hidden, as on a printed map.
@@ -714,6 +819,14 @@ export function createWorld(o: WorldOptions): World {
         want.target.copy(at);
         if (still) Object.assign(cam, { ...want, target: want.target.clone() });
       }
+    },
+    setMode(m) {
+      mode = m;
+      columns.visible = shade.visible = m === 'columns';
+      lights.visible = posts.visible = m === 'lights';
+      columnsDay = -1;
+      hoveredCell = -1;
+      dirty = true;
     },
     setActive(a) {
       if (a === active) return;

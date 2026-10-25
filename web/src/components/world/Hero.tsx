@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRightIcon, CornersInIcon, CornersOutIcon, PauseIcon, PlayIcon, XIcon } from '@phosphor-icons/react';
 import { useApi } from '../../lib/api';
-import { county, int, pct } from '../../lib/format';
+import { county, int, pct, road } from '../../lib/format';
 import { slug } from '../../lib/filters';
 import type { BreakdownRes, Points } from '../../lib/types';
 import { createWorld, type World } from './district';
@@ -68,7 +68,13 @@ export default function Hero() {
   const [picked, setPicked] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
   const [full, setFull] = useState(false);
+  // Lights: every crash as a point. Columns: crashes per 2.6 km hexagon, height for the count, colour for K+A.
+  const [mode, setMode] = useState<'lights' | 'columns'>('lights');
+  const [cell, setCell] = useState<{ crashes: number; k: number; ka: number; roads: string[]; x: number; y: number } | null>(null);
 
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  useEffect(() => { world.current?.setMode(mode); setCell(null); }, [mode]);
   const pickCounty = useCallback((name: string | null) => { setTouched(true); setPicked(name); }, []);
 
   const days = useMemo(() => {
@@ -96,6 +102,7 @@ export default function Hero() {
         },
         onHover: (name, x, y, road) => setTip(name || road ? { name, road, x, y } : null),
         onSelect: (name) => { setTouched(true); setPicked(name); },
+        onCell: (c, x, y) => setCell(c ? { ...c, x, y } : null),
       });
     } catch {
       setFailed(true);
@@ -105,6 +112,7 @@ export default function Hero() {
     const lost = (e: Event) => { e.preventDefault(); setPlaying(false); setFailed(true); };
     glCanvas?.addEventListener('webglcontextlost', lost);
     world.current = w;
+    w.setMode(modeRef.current);
     if (!still) w.play();
     setPlaying(!still);
     let inView = true;
@@ -195,7 +203,14 @@ export default function Hero() {
         {fallback && pts.data && <CanvasMap points={pts.data} county={picked} view={view} maxDay={shownDay}
           onCounty={pickCounty} />}
         <div ref={labels} className="hero-labels" aria-hidden="true" />
-        {tip && (tip.road || tip.name !== picked) && (
+        {cell && (
+          <div className="hero-tip" style={{ transform: `translate(${cell.x + 14}px, ${cell.y + 14}px)` }} aria-hidden="true">
+            <b>{int(cell.crashes)} crashes</b>
+            <span>{int(cell.k)} K · {int(cell.ka - cell.k)} A · {cell.crashes ? pct(cell.ka / cell.crashes) : '–'} K+A</span>
+            {cell.roads.length > 0 && <span>{cell.roads.map(road).join(' · ')}</span>}
+          </div>
+        )}
+        {!cell && tip && (tip.road || tip.name !== picked) && (
           <div className="hero-tip" style={{ transform: `translate(${tip.x + 14}px, ${tip.y + 14}px)` }} aria-hidden="true">
             {tip.road && <b className="hero-tip-road">{tip.road}</b>}
             {tip.name && <b>{county(tip.name)} County</b>}
@@ -221,10 +236,19 @@ export default function Hero() {
       </div>
 
       <div className="hero-side">
+        <Seg className="hero-views hero-modes" role="group" aria-label="Map view">
+          <button type="button" aria-pressed={mode === 'lights'} onClick={() => setMode('lights')} disabled={broken || fallback}>Crashes</button>
+          <button type="button" aria-pressed={mode === 'columns'} onClick={() => setMode('columns')} disabled={broken || fallback}
+            title="Crashes per 2.6 km hexagon: height for the count, colour for the share of fatal and serious">Columns</button>
+        </Seg>
         <Seg className="hero-views" role="group" aria-label="Camera">
           <button type="button" aria-pressed={view === 'district'} onClick={() => go('district')} disabled={broken}>District</button>
           <button type="button" aria-pressed={view === 'lubbock'} onClick={() => go('lubbock')} disabled={broken}>Lubbock</button>
         </Seg>
+        {mode === 'columns' && (
+          <p className="hero-key" title="Each column is a 2.6 km hexagon. Its K+A share is adjusted towards the district mean when it has few crashes (empirical Bayes).">
+            Height = crashes<span>K+A share</span><b>4%</b><i aria-hidden="true" /><b>20%+</b></p>
+        )}
         {canFull && (
           <button type="button" className="icon-btn hero-full" onClick={toggleFull} aria-pressed={full}
             aria-label={full ? 'Exit full screen' : 'Full screen'} title={full ? 'Exit full screen' : 'Full screen'}>
