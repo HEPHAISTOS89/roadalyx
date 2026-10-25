@@ -126,7 +126,7 @@ python -m nbconvert --to notebook --execute --inplace notebooks/eda.ipynb
 ```
 </details>
 
-## 📊 The data: what I found and the three results
+## 🧮 The data: what I found and the three results
 
 **One row is a person, not a crash.** The export has 67,906 rows for 24,261 crashes: every driver, passenger and pedestrian gets a row, and the crash's fields are copied onto each of them. Counting rows would count a four-person crash four times. I checked that the copied crash fields never disagree inside a crash, then built one record per Crash ID. The result matches the export's own header (24,261 crashes).
 
