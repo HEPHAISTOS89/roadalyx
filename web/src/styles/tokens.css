@@ -44,10 +44,10 @@
   --shadow-pop: 0 18px 48px -12px #000000cc, 0 0 0 1px #ffffff14;
   --danger-bg: #2a1416; --danger-ink: #ffd6d6; --danger-rule: #6b2a2a;
 
-  --sev-k: #e0234f;
-  --sev-a: #f27000;
-  --sev-b: #e7b63b;
-  --sev-c: #d0d8e1;
+  --sev-k: #e8284a;
+  --sev-a: #cc7d08;
+  --sev-b: #9c6cf0;
+  --sev-c: #0f9ec4;
   /* heat-map ramps: empty to busiest */
   --heat-lo: #1e1e1e; --heat-hi: #f2f2f2;
   --heat-ka-lo: #221619; --heat-ka-hi: #ff5a7a;
@@ -72,11 +72,11 @@
   --danger-bg: #fbe9e9; --danger-ink: #7a1a1a; --danger-rule: #e5b5b5;
 
   /* darker steps of the same ramp so B and C still read on paper */
-  --sev-k: #c8103f;
-  --sev-a: #e06400;
-  --sev-b: #d39b12;
-  --sev-c: #8f9ba8;
+  --sev-k: #c41634;
+  --sev-a: #c97400;
+  --sev-b: #6c48c4;
+  --sev-c: #0a84a8;
   --heat-lo: #ebe8e1; --heat-hi: #151515;
-  --heat-ka-lo: #f6e4e8; --heat-ka-hi: #c8103f;
+  --heat-ka-lo: #f6e4e8; --heat-ka-hi: #c41634;
   color-scheme: light;
 }

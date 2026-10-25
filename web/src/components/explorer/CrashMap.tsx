@@ -33,7 +33,7 @@ const PALETTE = {
     style: 'dark', bg: '#101010', place: '#c9c9c9', label: '#9c9c9c', county: '#4d4d4d', building3d: '#262626', outline: '#2e2e2e',
     stroke: '#101010', ring: '#f2f2f2', routeText: '#d4d4d4', routeHalo: '#0b0b0b',
     route: ['#6d82b0', '#55678f', '#46546f'], casing: ['#0c0f17', '#0c0f17', '#0e1118'],
-    sev: ['#e0234f', '#f27000', '#e7b63b', '#d0d8e1'],
+    sev: ['#e8284a', '#cc7d08', '#9c6cf0', '#0f9ec4'],
     density: ['rgba(30, 70, 80, 0)', 'rgba(34, 96, 108, 0.45)', 'rgba(47, 138, 148, 0.8)', '#6cc4c2', '#e2f7f1'],
     sky: { 'sky-color': '#13181b', 'horizon-color': '#262b2c', 'fog-color': '#101010' },
     roads: {
@@ -50,7 +50,7 @@ const PALETTE = {
     style: 'positron', bg: '#f3f0e8', place: '#202124', label: '#6b6b6b', county: '#a5a29b', building3d: '#dcd7ce', outline: '#d3cec4',
     stroke: '#ffffff', ring: '#151515', routeText: '#262626', routeHalo: '#f7f5f1',
     route: ['#b4c2e3', '#c3cfea', '#ffffff'], casing: ['#8597c6', '#9babd2', '#b7bec9'],
-    sev: ['#c8103f', '#e06400', '#d39b12', '#8f9ba8'],
+    sev: ['#c41634', '#c97400', '#6c48c4', '#0a84a8'],
     density: ['rgba(30, 100, 110, 0)', 'rgba(30, 100, 110, 0.3)', 'rgba(26, 96, 106, 0.65)', '#17525b', '#0a2c31'],
     sky: { 'sky-color': '#dde4e8', 'horizon-color': '#eef0ef', 'fog-color': '#f1efea' },
     roads: {

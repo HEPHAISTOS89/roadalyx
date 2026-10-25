@@ -41,14 +41,14 @@ const PALETTES = {
     inner: 0x5a5d5a, outer: 0x9da39b, water: 0x0f1d27, places: 0x171a19,
     streets: 0x3c4241, casing: 0x050505, roads: [0x4b5b80, 0x6d82b0, 0x93a8d8], picked: 0xf4f6f2,
     zenith: 0x101010, glow: 0x18150f,
-    sev: ['#e0234f', '#f27000', '#e7b63b', '#d0d8e1'], glowing: true,
+    sev: ['#e8284a', '#cc7d08', '#9c6cf0', '#0f9ec4'], glowing: true,
   },
   day: {
     ground: 0xf4f2ee, fill: 0xfbfaf8, hover: 0xefebe4, selected: 0xe8e3da,
     inner: 0xb4afa6, outer: 0x5f5a52, water: 0xc3d2dc, places: 0xe8e3da,
     streets: 0xbab4a9, casing: 0x8597c6, roads: [0xffffff, 0xc3cfea, 0xb4c2e3], picked: 0x151515,
     zenith: 0xf4f2ee, glow: 0xf4f2ee,
-    sev: ['#c8103f', '#e06400', '#d39b12', '#8f9ba8'], glowing: false,
+    sev: ['#c41634', '#c97400', '#6c48c4', '#0a84a8'], glowing: false,
   },
 };
 
