@@ -46,11 +46,14 @@ ensure_bucket() {
 
 # Keep the live code package and the one before it (CloudFormation rolls back to it); delete older ones.
 prune_releases() {
-  aws s3api list-objects-v2 --bucket "$BUCKET" --prefix releases/ \
-    --query 'reverse(sort_by(Contents, &LastModified))[2:].Key' --output text |
-    tr '\t' '\n' | grep -v '^None$' | grep . | while read -r key; do
-      aws s3 rm "s3://$BUCKET/$key" --only-show-errors
-    done
+  local keys key
+  keys="$(aws s3api list-objects-v2 --bucket "$BUCKET" --prefix releases/ \
+    --query 'reverse(sort_by(Contents, &LastModified))[2:].Key' --output text)"
+  while IFS= read -r key; do
+    # An empty list is normal on the first two deployments, not a deployment failure.
+    [[ -z "$key" || "$key" == None ]] && continue
+    aws s3 rm "s3://$BUCKET/$key" --only-show-errors
+  done <<< "${keys//$'\t'/$'\n'}"
 }
 
 publish_data() {

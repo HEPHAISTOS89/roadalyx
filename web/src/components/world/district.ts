@@ -364,6 +364,8 @@ export function createWorld(o: WorldOptions): World {
       routeEls.push({ el, at: project(lon, lat), near: text.startsWith('SH') ? 170 : 300 });
     }
     dirty = true;
+  }).catch(() => {
+    // Roads are optional: a failed or interrupted download must not break the crash map.
   });
 
   // Crash lights.

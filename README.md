@@ -16,7 +16,7 @@
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.162-009688?style=flat-square&logo=fastapi&logoColor=white"></a>
   <a href="#deployment-on-aws"><img alt="AWS Lambda, Free Tier" src="https://img.shields.io/badge/AWS_Lambda-Free_Tier-FF9900?style=flat-square"></a>
   <a href="web/"><img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black"></a>
-  <a href="tests/"><img alt="Tests: 95 Python and 25 frontend, passing" src="https://img.shields.io/badge/tests-95_%2B_25_passing-2EA44F?style=flat-square"></a>
+  <a href="tests/"><img alt="Tests: 101 Python and 25 frontend, passing" src="https://img.shields.io/badge/tests-101_%2B_25_passing-2EA44F?style=flat-square"></a>
 </p>
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis">
@@ -43,7 +43,7 @@ I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The
 |---|---|
 | **EDA and cleaning**: relevant columns, quality issues, decisions and reasons | [`notebooks/eda.ipynb`](notebooks/eda.ipynb), executed, so it reads on GitHub without the data |
 | **Data processing**: severity counts, top 5 factors, time patterns | `python -m roadalyx` · [`cris.py`](roadalyx/cris.py) (cleaning), [`metrics.py`](roadalyx/metrics.py) (the three results) |
-| **REST API**: at least 3 endpoints, 1 filter, JSON or CSV | 10 endpoints, 7 filters, JSON and CSV · [`api.py`](roadalyx/api.py), [`query.py`](roadalyx/query.py), [`schemas.py`](roadalyx/schemas.py) |
+| **REST API**: at least 3 endpoints, 1 filter, JSON or CSV | 10 endpoints, 9 filters, JSON and CSV · [`api.py`](roadalyx/api.py), [`query.py`](roadalyx/query.py), [`schemas.py`](roadalyx/schemas.py) |
 | **Deployment**: AWS Free Tier, public URL, no credentials in code | [Live URL](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/) · [`infra/template.yaml`](infra/template.yaml), [`scripts/deploy.sh`](scripts/deploy.sh) |
 | **README and dependencies** | This file · [`requirements.txt`](requirements.txt) (local), [`requirements-lambda.txt`](requirements-lambda.txt) (Lambda) |
 | **Tests** | [`tests/`](tests/): cleaning rules, API filters and errors, totals that must match across endpoints |
@@ -89,7 +89,7 @@ Wrote 24,261 crash records to data/processed/crashes.json.gz (0.9 MB)
 **2. Run the tests.**
 
 ```bash
-python -m pytest                   # 95 tests, a few seconds
+python -m pytest                   # 101 tests, a few seconds
 ```
 
 **3. Start the API**, then open <http://127.0.0.1:8000/api/docs> to try every endpoint in the browser. Stop it with Ctrl+C.

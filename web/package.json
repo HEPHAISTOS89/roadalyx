@@ -29,6 +29,6 @@
     "typescript": "5.9",
     "us-atlas": "^3.0.1",
     "vite": "^8.3.4",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.12"
   }
 }
