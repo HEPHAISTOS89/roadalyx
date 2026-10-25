@@ -31,6 +31,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from mangum import Mangum
+from pydantic import BaseModel, Field
 
 from . import metrics, schemas
 from .dataset import Dataset, load, slug
@@ -115,9 +116,11 @@ async def headers_and_access_log(request: Request, call_next):
         referrer = (urlsplit(request.headers.get("referer", "")).hostname or "")[:100] or None
     except ValueError:  # a malformed Referer must not turn the response into an error
         referrer = "invalid"
+    # The query string is the selection (filters, page, axis) on API calls; it carries nothing about the visitor.
+    query = request.url.query[:400] if path.startswith("/api/") and request.url.query else None
     print(json.dumps({"method": request.method, "path": request.url.path, "status": response.status_code,
                       "ms": round((time.perf_counter() - started) * 1000, 1),
-                      **client_of(request.headers.get("user-agent", "")), "from": referrer}))
+                      **client_of(request.headers.get("user-agent", "")), "from": referrer, "q": query}))
     return response
 
 
@@ -349,6 +352,28 @@ def points(f: FilterDep):
         "streets": streets,
         "street": [index.get(c["street"], -1) for c in located],
     })
+
+
+class _Event(BaseModel):
+    t: int = Field(ge=0, le=86_400_000)  # ms since the page loaded
+    a: str = Field(max_length=40)         # action: page, click, change, zoom, drag, hover, scroll, tab…
+    d: str = Field("", max_length=200)    # what it acted on: a control's label, a chart, a map
+    p: str = Field("", max_length=120)    # the page and selection it happened on
+    n: int = Field(1, ge=1, le=10_000)    # repeats merged into one line (hovers, wheel steps)
+
+
+class _Events(BaseModel):
+    s: str = Field(pattern=r"^[a-z0-9]{6,16}$")  # random per browser tab, not tied to a person
+    e: list[_Event] = Field(max_length=100)
+
+
+@app.post("/api/v1/events", status_code=204, include_in_schema=False)
+def events(batch: _Events, request: Request):
+    """Anonymous interaction log from the portal: what was clicked, filtered, zoomed or hovered, in order."""
+    client = client_of(request.headers.get("user-agent", ""))
+    for e in batch.e:
+        print(json.dumps({"event": e.a, "detail": e.d, "page": e.p, "t": e.t, "n": e.n, "s": batch.s, **client}))
+    return Response(status_code=204)
 
 
 @app.get("/api/{rest:path}", include_in_schema=False)

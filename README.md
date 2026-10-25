@@ -272,7 +272,7 @@ The cleaned dataset is small: 24,261 records, 0.9 MB compressed. Held in memory,
 | **Lambda Function URL** | The public HTTPS address of the function. | A public, read-only API needs no keys, usage plans or request mapping, so API Gateway would add a service without adding a feature. |
 | **Amazon S3** | Private bucket holding `data/crashes.json.gz` and the last two code packages. | Keeps data separate from code: a new export is published without rebuilding the app. |
 | **IAM** | The function's role: read that one S3 object, write its own logs. | Least privilege. Lambda receives short-lived credentials for the role; no access key exists in the code or the repository. |
-| **CloudWatch Logs** | One JSON line per request (path, status, duration, operating system and browser family, referring site), kept 14 days. No IP address or full User-Agent is stored. | Enough to see what is slow or failing, without paying to store old logs. |
+| **CloudWatch Logs** | One JSON line per request (path, filters, status, duration, operating system and browser family, referring site), plus one per portal interaction (page, click, filter, map zoom or drag, chart hover, scroll depth), grouped by a random per-tab id, kept 14 days. No cookie, IP address, typed text or full User-Agent is stored. | Enough to see what is slow or failing and how the portal is used, without paying to store old logs. |
 | **CloudFormation** | Declares the function, URL, role, permissions and log group in [`infra/template.yaml`](infra/template.yaml). | The deployment is reviewable code, and a redeploy changes only what changed. |
 
 ### How the data flows

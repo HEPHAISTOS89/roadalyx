@@ -1,4 +1,4 @@
-import { StrictMode, Suspense, lazy } from 'react';
+import { StrictMode, Suspense, lazy, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import '@fontsource-variable/geist';
@@ -9,12 +9,16 @@ import Boundary from './components/Boundary';
 import Shell from './components/Shell';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
+import { installTracking, trackPage } from './lib/track';
+
+installTracking();
 
 // Load the Analysis page (and its map) on demand so the landing page stays light.
 const Explorer = lazy(() => import('./pages/Explorer'));
 
 function Pages() {
   const { pathname, search } = useLocation();
+  useEffect(trackPage, [pathname, search]);
   return (
     <Boundary resetKey={pathname}>
       <Suspense fallback={<div className="page-loading" role="status">Loading…</div>}>

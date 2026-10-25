@@ -210,3 +210,19 @@ def test_client_of_keeps_only_os_and_browser_family():
 
 def test_malformed_referer_is_logged_not_raised():
     assert client.get("/api/health", headers={"referer": "http://["}).status_code == 200
+
+
+def test_events_are_logged_one_line_each(capsys):
+    body = {"s": "abc123xy", "e": [{"t": 10, "a": "click", "d": "Severity: K", "p": "/analysis"},
+                                   {"t": 900, "a": "zoom", "d": "Map", "p": "/analysis", "n": 4}]}
+    assert client.post("/api/v1/events", json=body).status_code == 204
+    lines = [json.loads(l) for l in capsys.readouterr().out.splitlines() if '"event"' in l]
+    assert [(l["event"], l["detail"], l["n"]) for l in lines] == [("click", "Severity: K", 1), ("zoom", "Map", 4)]
+
+
+def test_events_reject_oversized_or_malformed_batches():
+    assert client.post("/api/v1/events", json={"s": "x", "e": []}).status_code == 422
+    big = {"s": "abc123xy", "e": [{"t": 1, "a": "click", "d": "x" * 201}]}
+    assert client.post("/api/v1/events", json=big).status_code == 422
+    many = {"s": "abc123xy", "e": [{"t": 1, "a": "click"}] * 101}
+    assert client.post("/api/v1/events", json=many).status_code == 422
