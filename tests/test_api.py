@@ -169,3 +169,8 @@ def test_portal_explains_a_missing_build_and_serves_one_built_later(tmp_path, mo
     assert client.get("/assets/app.js").text == "console.log(1)"
     assert client.get("/assets/gone.js").status_code == 404                # old chunk: no HTML in its place
     assert client.get("/../roadalyx/api.py").text == "<p>portal</p>"  # never outside the build
+
+
+def test_data_access_tab_opens_the_api_reference():
+    r = client.get("/data-access", follow_redirects=False)
+    assert r.status_code == 307 and r.headers["location"] == "/api/docs"

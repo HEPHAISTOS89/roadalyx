@@ -28,7 +28,7 @@ from typing import Annotated, Literal
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from mangum import Mangum
 
 from . import metrics, schemas
@@ -313,6 +313,12 @@ def points(f: FilterDep):
 @app.get("/api/{rest:path}", include_in_schema=False)
 def api_not_found(rest: str):
     return JSONResponse({"detail": f"No endpoint /api/{rest}. See /api/docs."}, status_code=404)
+
+
+@app.get("/data-access", include_in_schema=False)
+def data_access():
+    """The portal's "Data access" tab: the interactive API reference."""
+    return RedirectResponse("/api/docs")
 
 
 # Portal --------------------------------------------------------------------

@@ -16,7 +16,7 @@
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.162-009688?style=flat-square&logo=fastapi&logoColor=white"></a>
   <a href="#deployment-on-aws"><img alt="AWS Lambda, Free Tier" src="https://img.shields.io/badge/AWS_Lambda-Free_Tier-FF9900?style=flat-square"></a>
   <a href="web/"><img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black"></a>
-  <a href="tests/"><img alt="Tests: 92 Python and 13 frontend, passing" src="https://img.shields.io/badge/tests-92_%2B_13_passing-2EA44F?style=flat-square"></a>
+  <a href="tests/"><img alt="Tests: 93 Python and 13 frontend, passing" src="https://img.shields.io/badge/tests-93_%2B_13_passing-2EA44F?style=flat-square"></a>
 </p>
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis">
@@ -80,7 +80,7 @@ Wrote 24,261 crash records to data/processed/crashes.json.gz (0.9 MB)
 **2. Run the tests.**
 
 ```bash
-python -m pytest                   # 92 tests, a few seconds
+python -m pytest                   # 93 tests, a few seconds
 ```
 
 **3. Start the API**, then open <http://127.0.0.1:8000/api/docs> to try every endpoint in the browser. Stop it with Ctrl+C.
@@ -320,7 +320,7 @@ Everything else stays small: one set of filters shared by every endpoint, one La
 A React frontend in [`web/`](web/), served by the same Lambda function and built only on the public API. It has two pages:
 
 - **[Analysis](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis)**, for working with the data. Filters (county, severity, years, road class, factor, road users) update everything at once and are kept in the URL, so a view can be shared. It shows the key figures, a map of every located crash, severity and factor charts, trends on four time axes, a day-by-hour grid, a breakdown table, the crash records, and a CSV download of the current selection.
-- **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/)**, a 3D view of the 17 counties where the crashes build up month by month from 2020 to 2026. Clicking a county opens its figures and a link to the Analysis page.
+- **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/district-map)**, a 3D view of the 17 counties where the crashes build up month by month from 2020 to 2026. Clicking a county opens its figures and a link to the Analysis page.
 
 <p align="center">
   <img src="docs/assets/district-map.jpg" width="880" alt="The District map: the 17 counties in 3D, with every located crash drawn as a light and fatal and serious crashes as red and orange posts, a timeline from 2020 to 2026, and counts of K, A, B and C crashes.">

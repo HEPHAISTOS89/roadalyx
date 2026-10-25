@@ -13,7 +13,7 @@ export function Mark({ size = 22 }: { size?: number }) {
 }
 
 const TITLES: Record<string, string> = {
-  '/': 'Roadalyx · Lubbock District injury crashes',
+  '/district-map': 'District map · Roadalyx',
   '/analysis': 'Analysis · Roadalyx',
 };
 
@@ -28,16 +28,16 @@ export default function Shell({ children }: { children: ReactNode }) {
     <>
       <a className="skip" href="#main">Skip to content</a>
       <header className="bar">
-        <Link to="/" className="brand" aria-label="Roadalyx home"><Mark /><span>Roadalyx</span></Link>
+        <Link to="/district-map" className="brand" aria-label="Roadalyx home"><Mark /><span>Roadalyx</span></Link>
         <nav aria-label="Main">
-          <NavLink to="/" end>District map</NavLink>
+          <NavLink to="/district-map">District map</NavLink>
           <NavLink to="/analysis">Analysis</NavLink>
-          <a href="/api/docs">Data access</a>
+          <a href="/data-access">Data access</a>
         </nav>
       </header>
       <main id="main" tabIndex={-1}>{children}</main>
-      {/* The overview is the 3D view alone; its scope line names the sources. */}
-      {pathname !== '/' && (
+      {/* The District map is the 3D view alone; its scope line names the sources. */}
+      {pathname !== '/district-map' && (
         <footer className="foot">
           <p>Data: TxDOT CRIS, Lubbock District. County lines: US Census Bureau.</p>
           <ul>

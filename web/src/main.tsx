@@ -18,7 +18,8 @@ function Pages() {
     <Boundary resetKey={pathname}>
       <Suspense fallback={<div className="page-loading" role="status">Loading…</div>}>
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Navigate to="/district-map" replace />} />
+          <Route path="/district-map" element={<Home />} />
           <Route path="/analysis" element={<Explorer />} />
           {/* The page was called Explorer at first: old links keep working, filters included. */}
           <Route path="/explorer" element={<Navigate to={`/analysis${search}`} replace />} />
