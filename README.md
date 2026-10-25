@@ -220,9 +220,9 @@ FastAPI, read-only (`GET`), with the interactive reference at [`/api/docs`](http
 | Points for a map | `/api/v1/points` |
 | What can I filter on? Is the service up? | `/api/v1/meta` · `/api/health` |
 
-The aggregate and search endpoints share seven filters, combined with AND: `county`, `severity`, `year_from`, `year_to`, `road_class`, `factor` and `vru` (pedestrian, pedalcyclist, motorcyclist).
+The aggregate and search endpoints share nine filters, combined with AND: `county`, `severity`, `year_from`, `year_to`, `road_class`, `factor`, `vru` (pedestrian, pedalcyclist, motorcyclist), `street` (the CRIS street name, such as `US0084` or `slide-rd`) and `location` (`intersection`, `segment` or `driveway`, from the CRIS Intersection Related field).
 
-`county`, `severity`, `road_class` and `vru` accept several values, either comma-separated or repeated in the URL. `factor` accepts one factor. `year_from` and `year_to` each accept one integer. Text filter values are case-insensitive.
+`county`, `severity`, `road_class`, `vru` and `street` accept several values, either comma-separated or repeated in the URL. `factor` accepts one factor and `location` one location. `year_from` and `year_to` each accept one integer. Text filter values are case-insensitive.
 
 ```bash
 curl 'https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/v1/severity?county=hale&severity=K,A'
