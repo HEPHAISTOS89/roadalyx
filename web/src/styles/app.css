@@ -91,6 +91,22 @@ main:focus { outline: none; }
 .icon-btn.small { width: 32px; height: 32px; font-size: 15px; }
 .theme-btn svg { transition: transform 420ms var(--spring); }
 .theme-btn:hover svg { transform: rotate(-24deg); }
+/* Header actions: larger, ringed, and they call attention once after load. */
+.bar .icon-btn.theme-btn, .bar .icon-btn.gh {
+  width: 44px; height: 44px; font-size: 22px; color: var(--ink);
+  position: relative;
+  animation: hdr-in 520ms var(--spring) both;
+}
+.bar .icon-btn.gh { animation-delay: 90ms; }
+.bar .icon-btn.theme-btn:hover, .bar .icon-btn.gh:hover { background: transparent; transform: translateY(-1px); }
+.bar .theme-btn svg { animation: icon-swap 480ms var(--spring); }
+.bar .icon-btn.gh:hover svg { animation: gh-wiggle 520ms var(--spring); }
+@keyframes hdr-in { from { opacity: 0; transform: translateY(-6px) scale(0.85); } }
+@keyframes icon-swap { from { opacity: 0; transform: rotate(-90deg) scale(0.4); } }
+@keyframes gh-wiggle { 30% { transform: rotate(-12deg) scale(1.08); } 60% { transform: rotate(8deg) scale(1.08); } }
+@media (prefers-reduced-motion: reduce) {
+  .bar .icon-btn.theme-btn, .bar .icon-btn.gh, .bar .theme-btn svg, .bar .icon-btn.gh:hover svg { animation: none; }
+}
 
 /* Pages */
 .page-loading { padding: var(--s8) var(--gutter); color: var(--ink-3); }
@@ -117,3 +133,20 @@ main:focus { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-delay: 0ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+/* Idle loop: every few seconds the cat dances and the moon (or sun) rocks, offset so they take turns. */
+.bar .icon-btn.gh svg { animation: gh-dance 5s var(--ease) 1.6s infinite; transform-origin: 50% 90%; }
+.bar .icon-btn.theme-btn svg { animation: icon-swap 480ms var(--spring), moon-rock 5s var(--ease) 4.1s infinite; transform-origin: 50% 50%; }
+@keyframes gh-dance {
+  0%, 76%, 100% { transform: none; }
+  80% { transform: translateY(-3px) rotate(-14deg); }
+  84% { transform: translateY(0) rotate(12deg); }
+  88% { transform: translateY(-3px) rotate(-10deg); }
+  92% { transform: translateY(0) rotate(6deg) scale(1.05); }
+}
+@keyframes moon-rock {
+  0%, 78%, 100% { transform: none; }
+  83% { transform: rotate(-22deg) scale(1.1); }
+  89% { transform: rotate(12deg); }
+  94% { transform: rotate(-4deg); }
+}
+@media (prefers-reduced-motion: reduce) { .bar .icon-btn.gh svg, .bar .icon-btn.theme-btn svg { animation: none; } }

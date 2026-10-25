@@ -41,7 +41,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         <div className="bar-end">
           <button type="button" className="icon-btn theme-btn" onClick={() => setTheme(next)}
             aria-label={`Switch to ${next} theme`} title={`Switch to ${next} theme`}>
-            {theme === 'dark' ? <MoonIcon weight="bold" /> : <SunIcon weight="bold" />}
+            {theme === 'dark' ? <MoonIcon key="moon" weight="bold" /> : <SunIcon key="sun" weight="bold" />}
           </button>
           <a className="icon-btn gh" href={REPO} aria-label="Source code on GitHub" title="Source code"><GithubLogoIcon weight="bold" /></a>
         </div>
