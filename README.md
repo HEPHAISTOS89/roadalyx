@@ -24,18 +24,18 @@
 
 I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The supplied CRIS export lists **67,906 people involved in 24,261 injury crashes** in the 17 counties of the TxDOT Lubbock District, from 1 January 2020 to 20 October 2026. A Python pipeline turns it into one clean record per crash, a FastAPI service answers questions about it, and both run on AWS within the Free Tier.
 
-## 🧭 Contents
+## <img src="docs/assets/icons/contents.svg" width="20" alt=""> Contents
 
-1. [Where to find each requirement](#-where-to-find-each-requirement)
-2. [Run it locally](#-run-it-locally)
-3. [The data: what I found and the three results](#-the-data-what-i-found-and-the-three-results)
-4. [The API](#-the-api)
-5. [Deployment on AWS](#-deployment-on-aws)
-6. [Scope decisions](#-scope-decisions)
-7. [Limitations and what I would do next](#-limitations-and-what-i-would-do-next)
-8. [The frontend](#-the-frontend)
+1. [Where to find each requirement](#where-to-find-each-requirement)
+2. [Run it locally](#run-it-locally)
+3. [The data: what I found and the three results](#the-data-what-i-found-and-the-three-results)
+4. [The API](#the-api)
+5. [Deployment on AWS](#deployment-on-aws)
+6. [Scope decisions](#scope-decisions)
+7. [Limitations and what I would do next](#limitations-and-what-i-would-do-next)
+8. [The frontend](#the-frontend)
 
-## ✅ Where to find each requirement
+## <img src="docs/assets/icons/requirements.svg" width="20" alt=""> Where to find each requirement
 
 | Requirement | Where it is |
 |---|---|
@@ -47,7 +47,7 @@ I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The
 | **Tests** | [`tests/`](tests/): cleaning rules, API filters and errors, totals that must match across endpoints |
 | **Frontend** for a traffic safety analyst | [`web/`](web/) · [Analysis page](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis) |
 
-## 🚀 Run it locally
+## <img src="docs/assets/icons/run.svg" width="20" alt=""> Run it locally
 
 You need **Python 3.12 or 3.13** and the CSV supplied with the assessment. Node 22.12+ is needed only for the frontend. Setup takes about a minute.
 
@@ -126,7 +126,7 @@ python -m nbconvert --to notebook --execute --inplace notebooks/eda.ipynb
 ```
 </details>
 
-## 🧮 The data: what I found and the three results
+## <img src="docs/assets/icons/data.svg" width="20" alt=""> The data: what I found and the three results
 
 **One row is a person, not a crash.** The export has 67,906 rows for 24,261 crashes: every driver, passenger and pedestrian gets a row, and the crash's fields are copied onto each of them. Counting rows would count a four-person crash four times. I checked that the copied crash fields never disagree inside a crash, then built one record per Crash ID. The result matches the export's own header (24,261 crashes).
 
@@ -202,7 +202,7 @@ The 624 fatal crashes killed 707 people. A crash can cite several factors, so fa
 
 I show this comparison in the EDA. I have not added a reportable-only filter to the API or portal.
 
-## 🔌 The API
+## <img src="docs/assets/icons/api.svg" width="20" alt=""> The API
 
 FastAPI, read-only (`GET`), with the interactive reference at [`/api/docs`](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs). I designed the endpoints around the questions an analyst or a dashboard asks:
 
@@ -242,7 +242,7 @@ url = "https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/
 fatal_and_serious = pd.read_csv(f"{url}?format=csv&county=lubbock&severity=K,A")
 ```
 
-## ☁️ Deployment on AWS
+## <img src="docs/assets/icons/cloud.svg" width="20" alt=""> Deployment on AWS
 
 <p align="center">
   <img src="docs/assets/architecture.svg" width="880" alt="Architecture. 1, publish the data: before deployment, python -m roadalyx turns the CRIS export (67,906 person rows) into crashes.json.gz (24,261 crashes); scripts/deploy.sh uploads it to a private S3 bucket. 2, serve a request: an analyst sends an HTTPS GET to the Lambda Function URL; Lambda runs FastAPI with Mangum, reads the dataset from S3 once per cold start, filters it in memory and returns JSON or CSV, writing one log line per request to CloudWatch Logs. An IAM role limits Lambda to that S3 object and its logs; CloudFormation creates the function, URL, role and log group.">
@@ -326,7 +326,7 @@ scripts/deploy.sh                    # full deployment
 scripts/deploy.sh data               # after processing a new export: upload the data only
 ```
 
-`scripts/deploy.sh` needs the AWS CLI, Node 22.12+, `zip`, `rsync`, `curl` and the `.venv` from [Run it locally](#-run-it-locally). It runs these steps and stops at the first failure:
+`scripts/deploy.sh` needs the AWS CLI, Node 22.12+, `zip`, `rsync`, `curl` and the `.venv` from [Run it locally](#run-it-locally). It runs these steps and stops at the first failure:
 
 1. **Test.** Run the Python tests.
 2. **Build.** Build the frontend into `roadalyx/web`.
@@ -335,19 +335,19 @@ scripts/deploy.sh data               # after processing a new export: upload the
 5. **Deploy.** Create or update the CloudFormation stack.
 6. **Check.** Call `/api/health` and print the public URL.
 
-## 🎯 Scope decisions
+## <img src="docs/assets/icons/scope.svg" width="20" alt=""> Scope decisions
 
 I prioritized the three required results: count crashes rather than person rows, split the factor lists correctly, and mark the partial year. The notebook and tests check those results against the export. I kept the supplied scope and used the EDA to show how excluding non-reportable crashes would change the ranking, rather than adding another portal filter.
 
 I use one filter implementation for the aggregate and search endpoints, one Lambda function reading one file, and a frontend built on the same API. I did not add user accounts or a database. I left rate limiting out of this assessment and would add it before wider public use.
 
-## 🧱 Limitations and what I would do next
+## <img src="docs/assets/icons/limits.svg" width="20" alt=""> Limitations and what I would do next
 
 - The export only has injury crashes (K, A, B, C), so the totals are not all crashes.
 - Without traffic volumes, I can say where crashes happen and how severe they are, but not which road is the most dangerous. With TxDOT's traffic counts (AADT), I would compute crash rates per road segment.
 - The last months may still grow: the data ends on 20 October 2026 and crash reports keep arriving.
 
-## 🖥️ The frontend
+## <img src="docs/assets/icons/frontend.svg" width="20" alt=""> The frontend
 
 A React frontend in [`web/`](web/), served by the same Lambda function and built only on the public API. It has two pages:
 
@@ -366,7 +366,7 @@ A React frontend in [`web/`](web/), served by the same Lambda function and built
 
 Charts have text equivalents (tooltips and data tables), work with the keyboard, and respect the reduced-motion setting.
 
-## 🗂️ Repository layout
+## <img src="docs/assets/icons/layout.svg" width="20" alt=""> Repository layout
 
 ```
 roadalyx/            Python package
