@@ -68,7 +68,7 @@ export default function Hero() {
   const [picked, setPicked] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
   const [full, setFull] = useState(false);
-  // Lights: every crash as a point. Columns: crashes per 2.6 km hexagon, height for the count, colour for K+A.
+  // Lights: every crash as a point. Hotspots: crashes per 2.6 km hexagon, height for the count, colour for K+A.
   const [mode, setMode] = useState<'lights' | 'columns'>('lights');
   const [cell, setCell] = useState<{ crashes: number; k: number; ka: number; roads: string[]; x: number; y: number } | null>(null);
 
@@ -293,7 +293,7 @@ export default function Hero() {
           <div className="hud-view">
             <Seg role="group" aria-label="What the map shows">
               <button type="button" aria-pressed={mode === 'lights'} onClick={() => setMode('lights')} disabled={broken || fallback}>Crashes</button>
-              <button type="button" aria-pressed={mode === 'columns'} onClick={() => setMode('columns')} disabled={broken || fallback}>Columns</button>
+              <button type="button" aria-pressed={mode === 'columns'} onClick={() => setMode('columns')} disabled={broken || fallback}>Hotspots</button>
             </Seg>
             <p className="hud-why">{mode === 'lights'
               ? 'Each crash where it happened. Posts: fatal and serious.'

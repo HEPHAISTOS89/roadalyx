@@ -25,7 +25,7 @@
 
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/">
-    <img src="docs/assets/demo.gif" width="880" alt="Demo in the dark theme: the District map, crashes building up from 2020 to 2026, then the Columns view with crashes per hexagon (height) and K+A share (colour); the Analysis page with the Intersection filter, the top corridors and the charts.">
+    <img src="docs/assets/demo.gif" width="880" alt="Demo in the dark theme: the District map, crashes building up from 2020 to 2026, then the Hotspots view with crashes per hexagon (height) and K+A share (colour); the Analysis page with the Intersection filter, the top corridors and the charts.">
   </a>
 </p>
 
@@ -362,7 +362,7 @@ I kept the design small: one filter implementation for the aggregate and search 
 I built the frontend in React ([`web/`](web/)) on the same public API, and the same Lambda function serves it. It has two pages:
 
 - **[Analysis](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis)**, for working with the data. Filters (county, severity, years, road class, factor, road users) update everything at once and are kept in the URL, so a view can be shared. It shows the key figures, a map of every located crash, severity and factor charts, trends on four time axes, a day-by-hour grid, a breakdown table, the crash records, and a CSV download of the current selection. On the map, a Location filter splits intersection, segment and driveway crashes, and a Top corridors list ranks streets by crashes: clicking one filters the whole page to that street. Crashes at the same spot merge into one mark that grows with their number, so a hot intersection stands out. Hovering a county shows its figures and a click filters the page to it. Highways are drawn as on a road map, with Interstate, US and state route shields. A Hotspots view shows crash density, and a 3D view tilts the map over the buildings.
-- **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/district-map)**, a 3D view of the 17 counties, with their roads and towns from Census TIGER/Line, where the crashes build up month by month from 2020 to 2026: lights at night in the dark theme, a paper road map in the light one. Clicking a county opens its figures and a link to the Analysis page. A Columns view bins the crashes in 2.6 km hexagons: height for the number of crashes, colour for the K+A share, adjusted towards the district mean for cells with few crashes (empirical Bayes, as in the HSM), so rural highways with severe crashes stand out from the busy but less severe city.
+- **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/district-map)**, a 3D view of the 17 counties, with their roads and towns from Census TIGER/Line, where the crashes build up month by month from 2020 to 2026: lights at night in the dark theme, a paper road map in the light one. Clicking a county opens its figures and a link to the Analysis page. A Hotspots view bins the crashes in 2.6 km hexagons: height for the number of crashes, colour for the K+A share, adjusted towards the district mean for cells with few crashes (empirical Bayes, as in the HSM), so rural highways with severe crashes stand out from the busy but less severe city.
 
 Both pages have a light and a dark theme (saved per browser, following the system by default). The interface is black and white so the only colours are the K, A, B and C severities.
 
@@ -373,7 +373,7 @@ Both pages have a light and a dark theme (saved per browser, following the syste
 </p>
 
 <p align="center">
-  <img src="docs/assets/district-map.jpg" width="880" alt="The District map in the dark theme, Columns view: the 17 counties in 3D with crashes per 2.6 km hexagon. Lubbock stands tallest but grey (many, mostly minor crashes); rural highways such as US 385, US 84 and US 87 stand in red (fewer but more severe crashes). The timeline bar holds the Crashes / Columns switch with its legend.">
+  <img src="docs/assets/district-map.jpg" width="880" alt="The District map in the dark theme, Hotspots view: the 17 counties in 3D with crashes per 2.6 km hexagon. Lubbock stands tallest but grey (many, mostly minor crashes); rural highways such as US 385, US 84 and US 87 stand in red (fewer but more severe crashes). The timeline bar holds the Crashes / Hotspots switch with its legend.">
 </p>
 
 Charts have text equivalents (tooltips and data tables), work with the keyboard, and respect the reduced-motion setting.

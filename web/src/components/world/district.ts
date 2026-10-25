@@ -66,7 +66,7 @@ export interface WorldOptions {
   onDay: (day: number) => void;
   onHover: (county: string | null, x: number, y: number, road: string | null) => void;
   onSelect: (county: string | null) => void;
-  /** The column under the pointer in the Columns view, counted up to the timeline date. */
+  /** The column under the pointer in the Hotspots view, counted up to the timeline date. */
   onCell?: (cell: { crashes: number; k: number; ka: number; roads: string[] } | null, x: number, y: number) => void;
 }
 
@@ -485,7 +485,7 @@ export function createWorld(o: WorldOptions): World {
   rings.renderOrder = 3;
   scene.add(rings);
 
-  // Columns: crashes binned in hexagons of HEX km. Height grows with the crashes up to the timeline date,
+  // Hotspots: crashes binned in hexagons of HEX km. Height grows with the crashes up to the timeline date,
   // colour with the share of fatal and serious (K+A) among them. Lit, so the relief reads as relief.
   const HEX = 2.6;
   const cellsByKey = new Map<string, { at: THREE.Vector3; all: number[]; ka: number[]; k: number[]; streets: Map<number, number> }>();
