@@ -81,8 +81,12 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
           layout: { 'circle-sort-key': ['match', ['get', 's'], 'K', 4, 'A', 3, 'B', 2, 1] },
           paint: {
             'circle-color': SEV_COLOR as never,
-            'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, ['match', ['get', 's'], 'K', 3.4, 'A', 2.6, 1.4], 13, ['match', ['get', 's'], 'K', 8, 'A', 6.5, 'B', 5, 4]] as never,
-            'circle-opacity': ['match', ['get', 's'], 'C', 0.55, 'B', 0.75, 0.95] as never,
+            // Close sizes at district scale: K and A are drawn on top, but B and C (91% of crashes) stay visible.
+            'circle-radius': ['interpolate', ['linear'], ['zoom'],
+              7, ['match', ['get', 's'], 'K', 2, 'A', 1.7, 'B', 1.4, 1.3],
+              10, ['match', ['get', 's'], 'K', 3.2, 'A', 2.8, 'B', 2.4, 2.2],
+              13, ['match', ['get', 's'], 'K', 7, 'A', 6, 'B', 5, 4.5]] as never,
+            'circle-opacity': ['match', ['get', 's'], 'C', 0.75, 'B', 0.85, 0.95] as never,
             'circle-stroke-color': '#0e0f0e',
             'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0, 12, 1] as never,
           },
