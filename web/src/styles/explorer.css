@@ -191,7 +191,8 @@ table.data tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparen
 .crash-card-head { position: sticky; top: calc(-1 * var(--s4)); padding-block: 8px; background: #121412; z-index: 1; }
 .selection-status { min-height: 1.3em; font-size: var(--t-micro); color: var(--ink-2); }
 .advanced-filters { position: relative; }
-.advanced-filters summary { cursor: pointer; padding: 7px 10px; min-height: var(--ctl); border: 1px solid var(--rule-2); border-radius: var(--r-m); font-size: var(--t-label); }
+.advanced-filters summary { display: inline-flex; align-items: center; gap: 6px; list-style: none; cursor: pointer; padding: 7px 10px; min-height: var(--ctl); border: 1px solid var(--rule-2); border-radius: var(--r-m); font-size: var(--t-label); }
+.advanced-filters summary::-webkit-details-marker { display: none; }
 .advanced-filters[open] { flex-basis: 100%; }
 .advanced-filters[open] summary { width: fit-content; margin-bottom: var(--s2); }
 .advanced-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); }

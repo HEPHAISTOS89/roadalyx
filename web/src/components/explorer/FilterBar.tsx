@@ -1,4 +1,4 @@
-import { XIcon } from '@phosphor-icons/react';
+import { FunnelIcon, XIcon } from '@phosphor-icons/react';
 import Picker from './Picker';
 import { county, title } from '../../lib/format';
 import { isEmpty, NO_FILTERS, type Filters } from '../../lib/filters';
@@ -58,7 +58,7 @@ export default function FilterBar({ meta, filters, set }: Props) {
       </div>
 
       <details className="advanced-filters">
-        <summary>More filters{advancedCount > 0 ? ` (${advancedCount} active)` : ''}</summary>
+        <summary><FunnelIcon size={16} aria-hidden="true" />More filters{advancedCount > 0 ? ` (${advancedCount} active)` : ''}</summary>
         <div className="advanced-controls">
       <Picker label="Road class" choices={meta.filters.road_class} selected={filters.roadClass} format={title}
         onChange={(v) => set({ roadClass: v })} />
