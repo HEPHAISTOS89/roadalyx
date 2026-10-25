@@ -29,7 +29,9 @@
   </a>
 </p>
 
-Roadalyx turns raw TxDOT crash records into something you can actually explore. The CRIS export covers **67,906 people involved in 24,261 injury crashes** across the 17 counties of the Lubbock District, from January 2020 to October 2026. A Python pipeline cleans it into one record per crash, a FastAPI service answers questions about it, and a live map shows where and when crashes happen.
+I built Roadalyx to help traffic safety analysts explore crash data and understand the patterns behind it: where crashes happen, how severe they are, which contributing factors are recorded, and how these patterns change over time.
+
+The dashboard brings together **24,261 injury crashes involving 67,906 people** across the **17 counties of the Lubbock District**, using TxDOT CRIS records from January 2020 to October 2026. Filters, maps and charts let analysts move from a district-wide overview to the individual crash records behind the numbers.
 
 ## <img src="docs/assets/icons/contents.svg" width="26" height="26" align="top" alt=""> Contents
 
