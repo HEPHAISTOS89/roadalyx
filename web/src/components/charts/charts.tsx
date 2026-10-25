@@ -105,8 +105,9 @@ export function TrendChart({ buckets, by, onPickYear }: { buckets: Bucket[]; by:
             let y0 = h - m.b;
             const bx = x(String(b.key))!;
             const bw = x.bandwidth();
+            const top = [...SEVS].reverse().find((code) => b[code] > 0); // the last segment drawn gets the rounded end
             return (
-              <g key={b.key} data-bucket={i} tabIndex={i === focused ? 0 : -1}
+              <g key={b.key} data-bucket={i} tabIndex={i === focused ? 0 : -1} style={{ '--i': i } as React.CSSProperties}
                 role={by === 'year' && onPickYear ? 'button' : 'img'}
                 aria-label={`${b.label}${b.complete ? '' : ', partial period'}: ${int(b.crashes)} crashes. ${SEVS.map((code) => `${code} ${int(b[code])}`).join(', ')}.${by === 'year' ? ' Activate to filter this year.' : ''}`}
                 onFocus={() => setActive(i)} onKeyDown={(e) => move(e, i)}
@@ -119,13 +120,18 @@ export function TrendChart({ buckets, by, onPickYear }: { buckets: Bucket[]; by:
                 {by === 'year' && onPickYear && <span className="muted">Activate to keep only {b.label}</span>}
               </>); }} onPointerLeave={hide}>
                 <rect x={bx - 2} y={m.t} width={bw + 4} height={h - m.b - m.t} fill="transparent" />
-                {SEVS.map((s) => {
-                  const hgt = y(0) - y(b[s]);
-                  y0 -= hgt;
-                  if (hgt <= 0) return null;
-                  return <rect key={s} x={bx} y={y0} width={bw} height={Math.max(hgt - (s === 'C' ? 0 : 1), 0.5)}
-                    fill={b.complete ? SEV_VAR[s] : 'none'} stroke={b.complete ? 'none' : SEV_VAR[s]} strokeWidth={1} rx={s === 'C' && bw > 6 ? 2 : 0} />;
-                })}
+                <g className="bar-in">
+                  {SEVS.map((s) => {
+                    const hgt = y(0) - y(b[s]);
+                    y0 -= hgt;
+                    if (hgt <= 0) return null;
+                    const r = s === top && bw > 6 ? Math.min(4, bw / 3, hgt) : 0;
+                    const h2 = Math.max(hgt - (s === 'K' ? 0 : 2), 0.5);
+                    // square at the baseline and between segments, rounded only at the top end
+                    const d = `M${bx},${y0 + h2}V${y0 + r}${r ? `Q${bx},${y0} ${bx + r},${y0}` : ''}H${bx + bw - r}${r ? `Q${bx + bw},${y0} ${bx + bw},${y0 + r}` : ''}V${y0 + h2}Z`;
+                    return <path key={s} d={d} fill={b.complete ? SEV_VAR[s] : 'none'} stroke={b.complete ? 'none' : SEV_VAR[s]} strokeWidth={1} />;
+                  })}
+                </g>
                 {!b.complete && bw > 14 && <text x={bx + bw / 2} y={y(b.crashes) - 6} textAnchor="middle" className="tick">partial</text>}
                 {ticks.has(i) && tickLabel(b) && (
                   <text x={bx + bw / 2} y={h - m.b + 16} textAnchor={by === 'month' ? 'start' : 'middle'} className="tick">{tickLabel(b)}</text>
@@ -137,7 +143,6 @@ export function TrendChart({ buckets, by, onPickYear }: { buckets: Bucket[]; by:
         </svg>
       )}
       {readout && <p className="chart-readout"><b>{readout.label}{readout.complete ? '' : ' · partial'}</b><span>{int(readout.crashes)} crashes</span>{SEVS.map((code) => <span key={code}>{code} {int(readout[code])}</span>)}</p>}
-      {buckets.some((b) => !b.complete) && <p className="panel-meta">Partial period: {buckets.filter((b) => !b.complete).map((b) => b.label).join(', ')}.</p>}
       <details className="chart-data">
         <summary>View time data</summary>
         <div className="table-wrap" tabIndex={0} role="region" aria-label="Time data">
@@ -171,7 +176,9 @@ export function Heatmap({ data, metric }: { data: HeatmapRes; metric: 'crashes' 
   const cw = Math.max((width - m.l) / 24, 6);
   const ch = Math.min(Math.max(cw * 0.78, 16), 30);
   const h = m.t + ch * 7 + m.b;
-  const shade = scaleLinear<string>().domain([0, max]).range(metric === 'crashes' ? ['#1b1f1b', '#cfe0ca'] : ['#1d1617', '#f0566f']);
+  // One hue light to dark, mixed in CSS from the theme's ramp so a theme switch recolours without a re-render.
+  const [lo, hi] = metric === 'crashes' ? ['var(--heat-lo)', 'var(--heat-hi)'] : ['var(--heat-ka-lo)', 'var(--heat-ka-hi)'];
+  const shade = (v: number) => `color-mix(in oklab, ${hi} ${Math.round(8 + 92 * Math.sqrt(v / max))}%, ${lo})`;
   return (
     <div ref={ref} className="chart">
       {width > 0 && (
@@ -183,8 +190,8 @@ export function Heatmap({ data, metric }: { data: HeatmapRes; metric: 'crashes' 
                 <rect key={hr} data-cell={d * 24 + hr} role="img" tabIndex={active === d * 24 + hr ? 0 : -1}
                   aria-label={`${data.rows[d]}, ${hr}:00: ${int(data.crashes[d][hr])} crashes, ${int(data.ka_crashes[d][hr])} fatal or serious`}
                   onFocus={() => setActive(d * 24 + hr)} onClick={(e) => { setActive(d * 24 + hr); e.currentTarget.focus(); }}
-                  onKeyDown={(e) => move(e, d * 24 + hr)} x={m.l + hr * cw + 1} y={m.t + d * ch + 1} width={cw - 2} height={ch - 2} rx={2}
-                  fill={v ? shade(v) : 'var(--ground-2)'}
+                  onKeyDown={(e) => move(e, d * 24 + hr)} x={m.l + hr * cw + 1.5} y={m.t + d * ch + 1.5} width={cw - 3} height={ch - 3} rx={Math.min(4, cw / 5)}
+                  className="heat-cell" style={{ fill: v ? shade(v) : lo }}
                   onPointerMove={(e) => { setActive(d * 24 + hr); show(e, <>
                     <b>{data.rows[d]}, {String(hr).padStart(2, '0')}:00–{String(hr).padStart(2, '0')}:59</b>
                     <span>{int(data.crashes[d][hr])} crashes, {int(data.ka_crashes[d][hr])} fatal or serious</span>
@@ -207,8 +214,8 @@ export function Heatmap({ data, metric }: { data: HeatmapRes; metric: 'crashes' 
           </table>
         </div>
       </details>
-      <div className="ramp" aria-hidden="true">
-        <span>0</span><i style={{ background: `linear-gradient(90deg, ${shade(0)}, ${shade(max)})` }} /><span className="num">{int(max)}</span>
+      <div className="heat-key" aria-hidden="true">
+        <span>0</span>{[0, 0.25, 0.5, 0.75, 1].map((f) => <i key={f} style={{ background: f ? shade(f * f * max) : lo }} />)}<span className="num">{int(max)}</span>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import '@fontsource-variable/jetbrains-mono';
+import '@fontsource-variable/geist';
+import '@fontsource/instrument-serif/latin-400-italic.css';
 import './styles/tokens.css';
 import './styles/app.css';
 import Boundary from './components/Boundary';

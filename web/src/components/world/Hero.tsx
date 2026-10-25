@@ -9,6 +9,8 @@ import { createWorld, type World } from './district';
 import '../../styles/hero.css';
 import CanvasMap from '../maps/CanvasMap';
 import { supportsWebGL2 } from '../../lib/map2d';
+import { useTheme } from '../../lib/theme';
+import { Seg } from '../ui';
 
 const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const coarse = window.matchMedia('(pointer: coarse)').matches;
@@ -56,6 +58,8 @@ export default function Hero() {
     return () => media.removeEventListener('change', sync);
   }, []);
   const [gl] = useState(supportsWebGL2);
+  // Night lights in the dark theme, a paper road map in the light one: the scene is rebuilt on a switch.
+  const light = useTheme() === 'light';
   const [failed, setFailed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [day, setDay] = useState<number | null>(null);
@@ -85,7 +89,7 @@ export default function Hero() {
     let lastPush = 0;
     try {
       w = createWorld({
-        host: host.current, labels: labels.current, points: pts.data, still,
+        host: host.current, labels: labels.current, points: pts.data, still, light,
         onDay: (d) => {
           const now = performance.now();
           if (now - lastPush > 60) { lastPush = now; setDay(d); }
@@ -115,7 +119,7 @@ export default function Hero() {
       w.dispose();
       world.current = null;
     };
-  }, [pts.data, gl, still, failed]);
+  }, [pts.data, gl, still, failed, light]);
 
   const fallback = !gl || failed;
   // The software map uses the same day cut-off as the HUD, with no camera animation.
@@ -207,18 +211,20 @@ export default function Hero() {
       </div>
 
       <div className="hero-copy">
-        <h1 id="hero-h" className="sr-only">Injury crashes in the TxDOT Lubbock District, 2020 to 2026</h1>
-        <p className="hero-context">Lubbock District · TxDOT CRIS · 2020–2026</p>
+        <h1 id="hero-h" className="hero-title">Lubbock District, crash by crash</h1>
+        <p className="hero-context">
+          {pts.data ? <><b className="num">{int(pts.data.total)}</b> injury crashes · </> : null}TxDOT CRIS · 2020–2026
+        </p>
         <div className="actions">
-          <Link className="btn primary" to="/analysis">Explore crashes<ArrowRightIcon aria-hidden="true" /></Link>
+          <Link className="btn primary" to="/analysis">Explore crashes<ArrowRightIcon className="go" aria-hidden="true" /></Link>
         </div>
       </div>
 
       <div className="hero-side">
-        <div className="hero-views" role="group" aria-label="Camera">
+        <Seg className="hero-views" role="group" aria-label="Camera">
           <button type="button" aria-pressed={view === 'district'} onClick={() => go('district')} disabled={broken}>District</button>
           <button type="button" aria-pressed={view === 'lubbock'} onClick={() => go('lubbock')} disabled={broken}>Lubbock</button>
-        </div>
+        </Seg>
         {canFull && (
           <button type="button" className="icon-btn hero-full" onClick={toggleFull} aria-pressed={full}
             aria-label={full ? 'Exit full screen' : 'Full screen'} title={full ? 'Exit full screen' : 'Full screen'}>
@@ -233,7 +239,6 @@ export default function Hero() {
             </div>
             {sel ? (
               <>
-                <p className="panel-meta">Full period · includes unmapped crashes</p>
                 <dl>
                 <div><dt>Crashes</dt><dd className="num">{int(sel.crashes)}</dd></div>
                 <div><dt>K + A share</dt><dd className="num">{pct(sel.ka_share)}</dd></div>
@@ -242,7 +247,7 @@ export default function Hero() {
                 </dl>
               </>
             ) : <p className="muted">Loading…</p>}
-            <Link className="finding-cta" to={`/analysis?county=${slug(picked)}`}>Open in Analysis<ArrowRightIcon aria-hidden="true" /></Link>
+            <Link className="btn primary small" to={`/analysis?county=${slug(picked)}`}>Open in Analysis<ArrowRightIcon className="go" aria-hidden="true" /></Link>
           </section>
         )}
       </div>

@@ -4,6 +4,7 @@ import { county as countyLabel, int } from '../../lib/format';
 import { countyAt, countyShapes, districtBounds, fitMap, lubbockBounds, nearestPoint, pointBounds, project2d, visibleIndices, type XY } from '../../lib/map2d';
 import type { Points } from '../../lib/types';
 import '../../styles/map-fallback.css';
+import { useTheme } from '../../lib/theme';
 
 interface Props {
   points: Points | null;
@@ -14,7 +15,6 @@ interface Props {
   view?: 'district' | 'lubbock' | null;
   maxDay?: number;
 }
-const colors: Record<string, string> = { K: '#d31246', A: '#f27000', B: '#e7b63b', C: '#d0d8e1' };
 
 /** GPU-independent fallback. Bundled county boundaries and CRIS locations, not an external tile service. */
 export default function CanvasMap({ points, selected, onSelect, county, onCounty, view, maxDay }: Props) {
@@ -25,6 +25,7 @@ export default function CanvasMap({ points, selected, onSelect, county, onCounty
   const [camera, setCamera] = useState({ x: 0, y: 0, scale: 1 });
   const [full, setFull] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
+  const theme = useTheme();
   const indices = useMemo(() => visibleIndices(points, maxDay), [points, maxDay]);
   const coordinates = useMemo(() => points?.lon.map((lon, i) => project2d(lon, points.lat[i])) ?? [], [points]);
   const bounds = useMemo(() => county ? (countyShapes.find((c) => c.name === county)?.bounds ?? districtBounds)
@@ -68,13 +69,17 @@ export default function CanvasMap({ points, selected, onSelect, county, onCounty
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     el.width = Math.round(width * ratio); el.height = Math.round(height * ratio);
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.fillStyle = '#0e0f0e'; ctx.fillRect(0, 0, width, height);
+    // Colours from the theme tokens, read at draw time so a theme switch repaints in the other palette.
+    const css = getComputedStyle(el);
+    const v = (name: string) => css.getPropertyValue(name).trim();
+    const colors: Record<string, string> = { K: v('--sev-k'), A: v('--sev-a'), B: v('--sev-b'), C: v('--sev-c') };
+    ctx.fillStyle = v('--panel-2'); ctx.fillRect(0, 0, width, height);
     const screen = ([x, y]: XY): XY => [(x - camera.x) * camera.scale + width / 2, (y - camera.y) * camera.scale + height / 2];
     for (const c of countyShapes) {
       ctx.beginPath();
       c.ring.forEach((p, i) => { const [x, y] = screen(p); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
-      ctx.closePath(); ctx.fillStyle = county === c.name ? '#1b251d' : '#111511'; ctx.fill();
-      ctx.strokeStyle = '#4a524a'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.closePath(); ctx.fillStyle = county === c.name ? v('--raise') : v('--panel'); ctx.fill();
+      ctx.strokeStyle = v('--ink-4'); ctx.lineWidth = 1; ctx.stroke();
     }
     for (const i of indices) {
       const [x, y] = screen(coordinates[i]);
@@ -83,15 +88,15 @@ export default function CanvasMap({ points, selected, onSelect, county, onCounty
       ctx.beginPath(); ctx.arc(x, y, (s === 'K' ? 2.5 : s === 'A' ? 2 : 1.4) * Math.min(2, Math.max(1, camera.scale / 700)), 0, Math.PI * 2);
       ctx.fillStyle = colors[s]; ctx.globalAlpha = s === 'C' ? 0.75 : 1; ctx.fill();
       if (points!.id[i] === selected) {
-        ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.strokeStyle = '#eef0ec'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.strokeStyle = v('--ink'); ctx.lineWidth = 2; ctx.stroke();
       }
     }
     ctx.globalAlpha = 1;
     if (!onCounty) {
-      ctx.font = '11px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = '#a4ada1';
+      ctx.font = '11px system-ui'; ctx.textAlign = 'center'; ctx.fillStyle = v('--ink-3');
       for (const c of countyShapes) { const [x, y] = screen(c.center); ctx.fillText(c.name, x, y - 10); }
     }
-  }, [size, camera, coordinates, points, indices, selected, county, onCounty]);
+  }, [size, camera, coordinates, points, indices, selected, county, onCounty, theme]);
 
   const label = `${int(indices.length)} located crashes on a 2D county map. Drag to pan, use plus or minus to zoom. Arrow keys pan; Home resets the view.`;
   return <div ref={root} className={`canvas-map${full ? ' canvas-map-full' : ''}`} role="region" aria-label="2D crash map">

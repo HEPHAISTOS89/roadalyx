@@ -1,5 +1,8 @@
 import { useEffect, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
+import { GithubLogoIcon, MoonIcon, SunIcon } from '@phosphor-icons/react';
+import { Seg } from './ui';
+import { setTheme, useTheme } from '../lib/theme';
 
 export const REPO = 'https://github.com/HEPHAISTOS89/roadalyx';
 
@@ -19,31 +22,41 @@ const TITLES: Record<string, string> = {
 
 export default function Shell({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
+  const theme = useTheme();
   useEffect(() => {
     document.title = TITLES[pathname] ?? 'Not found · Roadalyx';
     window.scrollTo(0, 0);
   }, [pathname]);
+  const next = theme === 'dark' ? 'light' : 'dark';
 
   return (
     <>
       <a className="skip" href="#main">Skip to content</a>
       <header className="bar">
         <Link to="/district-map" className="brand" aria-label="Roadalyx home"><Mark /><span>Roadalyx</span></Link>
-        <nav aria-label="Main">
+        <Seg as="nav" aria-label="Main">
           <NavLink to="/district-map">District map</NavLink>
           <NavLink to="/analysis">Analysis</NavLink>
-        </nav>
+        </Seg>
+        <div className="bar-end">
+          <button type="button" className="icon-btn theme-btn" onClick={() => setTheme(next)}
+            aria-label={`Switch to ${next} theme`} title={`Switch to ${next} theme`}>
+            {theme === 'dark' ? <MoonIcon weight="bold" /> : <SunIcon weight="bold" />}
+          </button>
+          <a className="icon-btn gh" href={REPO} aria-label="Source code on GitHub" title="Source code"><GithubLogoIcon weight="bold" /></a>
+        </div>
       </header>
       <main id="main" tabIndex={-1}>{children}</main>
-      {/* The District map is the 3D view alone; its scope line names the sources. */}
       {pathname !== '/district-map' && (
         <footer className="foot">
-          <p>Data: TxDOT CRIS, Lubbock District. County lines: US Census Bureau.</p>
-          <ul>
-            <li><a href="/api/docs">API docs</a></li>
-            <li><a href={`${REPO}/blob/main/notebooks/eda.ipynb`}>EDA notebook</a></li>
-            <li><a href={REPO}>Source code</a></li>
-          </ul>
+          <div className="foot-row">
+            <p>Data: TxDOT CRIS, Lubbock District. County lines and roads: US Census Bureau.</p>
+            <ul>
+              <li><a href="/api/docs">API docs</a></li>
+              <li><a href={`${REPO}/blob/main/notebooks/eda.ipynb`}>EDA notebook</a></li>
+              <li><a href={REPO}>Source code</a></li>
+            </ul>
+          </div>
         </footer>
       )}
     </>

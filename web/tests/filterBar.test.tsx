@@ -23,7 +23,7 @@ describe('filter toolbar', () => {
   it('disables reset only when there are no active filters', () => {
     expect(render()).toMatch(/class="btn small reset"[^>]*disabled=""/);
     expect(render({ ...NO_FILTERS, severity: ['K'], yearFrom: 2021 })).not.toMatch(/class="btn small reset"[^>]*disabled/);
-    expect(render()).toContain('Reset filters');
+    expect(render()).toContain('Reset');
   });
 
   it('retains native labelled year selects and the advanced filter count', () => {
@@ -31,6 +31,6 @@ describe('filter toolbar', () => {
     expect(html).toContain('From year');
     expect(html).toContain('To year');
     expect((html.match(/<select/g) ?? []).length).toBe(2);
-    expect(html).toContain('More filters (2 active)');
+    expect(html).toContain('aria-label="More filters (2 active)"');
   });
 });

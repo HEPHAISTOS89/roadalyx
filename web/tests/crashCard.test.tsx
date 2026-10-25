@@ -27,14 +27,14 @@ describe('crash record interpretation', () => {
 
   it('keeps recognized road-user involvement', () => {
     response.data!.vru = ['pedestrian', 'motorcyclist'];
-    expect(render()).toContain('<dt>Road users</dt><dd>pedestrian, motorcyclist</dd>');
+    expect(render()).toContain('<dt>Road users</dt><dd>Pedestrian, Motorcyclist</dd>');
   });
 
   it.each([
     [null, null], [33.5, null], [null, -101.8],
   ])('shows an unknown location for incomplete coordinates (%s, %s)', (lat, lon) => {
     Object.assign(response.data!, { lat, lon });
-    expect(render()).toContain('<dt>Location</dt><dd class="mono">Not recorded</dd>');
+    expect(render()).toContain('<dt>Location</dt><dd class="num">Not recorded</dd>');
   });
 
   it('shows both coordinates when both are recorded', () => {
@@ -43,6 +43,6 @@ describe('crash record interpretation', () => {
   });
 
   it('shows a missing street without inventing a road name', () => {
-    expect(render()).toContain('<dt>Street</dt><dd class="mono">–</dd>');
+    expect(render()).toContain('<dt>Street</dt><dd>–</dd>');
   });
 });

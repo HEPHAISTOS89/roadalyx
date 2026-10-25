@@ -27,13 +27,30 @@ const KX = 111.32 * Math.cos((LAT0 * Math.PI) / 180);
 const KZ = 110.57;
 export const project = (lon: number, lat: number) => new THREE.Vector3((lon - LON0) * KX, 0, -(lat - LAT0) * KZ);
 
-const GROUND = 0x0a0b0a;
-const FILL = 0x0c0d0c;
-const FILL_HOVER = 0x1a1f1a;
-const FILL_SELECTED = 0x151c17;
 const SEV_INDEX: Record<string, number> = { K: 0, A: 1, B: 2, C: 3 };
-// Same ramp as --sev-* in tokens.css (validated ordinal ramp: lightness falls from C to K).
-const SEV_COLOR = ['#d31246', '#f27000', '#e7b63b', '#d0d8e1'].map((c) => new THREE.Color(c));
+
+/**
+ * Night (dark theme): lights over a black plain, additive glow and bloom. Day (light theme): a paper road
+ * map, white highways with grey casings, crash marks blended normally so they stay solid on the light ground.
+ * Severity colours are the --sev-* ramp of tokens.css for each theme. The ground and sky are the page's
+ * --ground, so the scene has no edge: the district floats on the page itself.
+ */
+const PALETTES = {
+  night: {
+    ground: 0x101010, fill: 0x141414, hover: 0x222222, selected: 0x1c1c1c,
+    inner: 0x5a5d5a, outer: 0x9da39b, water: 0x0f1d27, places: 0x171a19,
+    streets: 0x3c4241, casing: 0x050505, roads: [0x4b5b80, 0x6d82b0, 0x93a8d8], picked: 0xf4f6f2,
+    zenith: 0x101010, glow: 0x18150f,
+    sev: ['#e0234f', '#f27000', '#e7b63b', '#d0d8e1'], glowing: true,
+  },
+  day: {
+    ground: 0xf4f2ee, fill: 0xfbfaf8, hover: 0xefebe4, selected: 0xe8e3da,
+    inner: 0xb4afa6, outer: 0x5f5a52, water: 0xc3d2dc, places: 0xe8e3da,
+    streets: 0xbab4a9, casing: 0x8597c6, roads: [0xffffff, 0xc3cfea, 0xb4c2e3], picked: 0x151515,
+    zenith: 0xf4f2ee, glow: 0xf4f2ee,
+    sev: ['#c8103f', '#e06400', '#d39b12', '#8f9ba8'], glowing: false,
+  },
+};
 
 const HOLD = 40;            // days the timeline runs past the last crash so the last flares settle
 const LOOP_PAUSE = 4;       // seconds the full picture stays before the timeline replays
@@ -45,6 +62,7 @@ export interface WorldOptions {
   labels: HTMLElement;
   points: Points;
   still: boolean;
+  light: boolean;
   onDay: (day: number) => void;
   onHover: (county: string | null, x: number, y: number, road: string | null) => void;
   onSelect: (county: string | null) => void;
@@ -68,6 +86,7 @@ const POINT_VS = /* glsl */ `
   uniform float uDay;
   uniform float uTime;
   uniform float uPx;
+  uniform float uSolid;
   uniform vec3 uColors[4];
   varying vec3 vColor;
   varying float vAlpha;
@@ -82,7 +101,8 @@ const POINT_VS = /* glsl */ `
     float base = s == 0 ? 5.0 : s == 1 ? 3.6 : s == 2 ? 2.2 : 1.6;
     // resting lights breathe slightly out of step with each other, like a city seen from the air
     float breathe = 0.82 + 0.18 * sin(uTime * (0.6 + phase * 0.9) + phase * 6.2831);
-    vAlpha = shown * (s == 3 ? 0.18 : s == 2 ? 0.28 : 0.8) * mix(breathe, 1.0, vSpark);
+    // on paper nothing glows, so the many B and C marks need more opacity to read (uSolid = 1 by day)
+    vAlpha = shown * (s == 3 ? mix(0.18, 0.5, uSolid) : s == 2 ? mix(0.28, 0.7, uSolid) : 0.85) * mix(breathe, 1.0, vSpark);
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mv;
     float dist = max(-mv.z, 1.0);
@@ -164,11 +184,13 @@ const SKY_VS = /* glsl */ `
 const SKY_FS = /* glsl */ `
   varying vec3 vDir;
   uniform vec3 uGround;
+  uniform vec3 uZenith;
+  uniform vec3 uGlow;
   void main() {
     float h = vDir.y;
-    // Llano night: the ground colour fades into a faint warm glow low on the horizon, then the night sky
-    vec3 zenith = vec3(0.022, 0.026, 0.036);
-    vec3 glow = vec3(0.07, 0.055, 0.045);
+    // Llano sky: the ground colour fades into a warm band low on the horizon, then the sky above
+    vec3 zenith = uZenith;
+    vec3 glow = uGlow;
     vec3 col = mix(glow, zenith, smoothstep(0.0, 0.3, h));
     col = mix(col, uGround, smoothstep(0.02, -0.04, h));
     gl_FragColor = vec4(col, 1.0);
@@ -197,13 +219,16 @@ const VIEWS = {
 
 export function createWorld(o: WorldOptions): World {
   const { host, labels, points, still } = o;
+  const C = o.light ? PALETTES.day : PALETTES.night;
+  const SEV_COLOR = C.sev.map((c) => new THREE.Color(c));
+  const GLOW = C.glowing ? THREE.AdditiveBlending : THREE.NormalBlending;
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   host.prepend(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(GROUND, 260, 720);
+  scene.fog = new THREE.Fog(C.ground, 260, 720);
   const camera = new THREE.PerspectiveCamera(34, 1, 4, 2000);
   const px = renderer.getPixelRatio();
   const time = { value: 0 };
@@ -211,9 +236,9 @@ export function createWorld(o: WorldOptions): World {
   // Sky dome, stars and ground.
   const sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16),
     new THREE.ShaderMaterial({ vertexShader: SKY_VS, fragmentShader: SKY_FS, side: THREE.BackSide, depthWrite: false, fog: false,
-      uniforms: { uGround: { value: new THREE.Color(GROUND) } } }));
+      uniforms: { uGround: { value: new THREE.Color(C.ground) }, uZenith: { value: new THREE.Color(C.zenith) }, uGlow: { value: new THREE.Color(C.glow) } } }));
   scene.add(sky);
-  {
+  if (C.glowing) {
     const N = 900;
     const sp = new Float32Array(N * 3);
     const ph = new Float32Array(N);
@@ -232,7 +257,7 @@ export function createWorld(o: WorldOptions): World {
     stars.frustumCulled = false;
     scene.add(stars);
   }
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshBasicMaterial({ color: GROUND }));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshBasicMaterial({ color: C.ground }));
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.05;
   scene.add(ground);
@@ -240,7 +265,7 @@ export function createWorld(o: WorldOptions): World {
   // Counties: a faint fill (hover target) and anti-aliased boundary lines. An edge shared by two
   // counties is an inner line; an edge used once is the district boundary, drawn brighter.
   // Draw order is explicit: ground, county fills, county lines, then the lights on top of everything.
-  const fillMat = () => new THREE.MeshBasicMaterial({ color: FILL, depthWrite: false });
+  const fillMat = () => new THREE.MeshBasicMaterial({ color: C.fill, depthWrite: false });
   const edges = new Map<string, { a: THREE.Vector3; b: THREE.Vector3; uses: number }>();
   const countyMeshes: THREE.Mesh[] = [];
   const labelEls: { el: HTMLElement; at: THREE.Vector3; name: string }[] = [];
@@ -284,8 +309,8 @@ export function createWorld(o: WorldOptions): World {
   };
   const edgeList = (list: { a: THREE.Vector3; b: THREE.Vector3 }[]) => list.flatMap(({ a, b }) => [a.x, a.y, a.z, b.x, b.y, b.z]);
   const all = [...edges.values()];
-  addLines(edgeList(all.filter((e) => e.uses > 1)), 0x58625a, 1, 0.55);
-  addLines(edgeList(all.filter((e) => e.uses === 1)), 0x9aa797, 1.6, 0.8);
+  addLines(edgeList(all.filter((e) => e.uses > 1)), C.inner, 1, 0.55);
+  addLines(edgeList(all.filter((e) => e.uses === 1)), C.outer, 1.6, 0.8);
 
   // Roads, from Census TIGER/Line: loaded after the first frame so the crashes never wait for them.
   // A cool grey hierarchy under the warm severity colours: interstates brightest and widest, then US
@@ -324,8 +349,8 @@ export function createWorld(o: WorldOptions): World {
       mesh.renderOrder = order;
       scene.add(mesh);
     };
-    fills(roads.water, 0x0f1d27, 0.005, 1.2);
-    fills(roads.places, 0x161b19, 0.01, 1.3);
+    fills(roads.water, C.water, 0.005, 1.2);
+    fills(roads.places, C.places, 0.01, 1.3);
     for (const [name, lon, lat, km2] of (roads.towns as [string, number, number, number][]).sort((a, b) => b[3] - a[3])) {
       const el = document.createElement('i');
       el.textContent = name;
@@ -336,15 +361,15 @@ export function createWorld(o: WorldOptions): World {
     }
     const local = new THREE.BufferGeometry();
     local.setAttribute('position', new THREE.Float32BufferAttribute(segments(roads.l, 0.02), 3));
-    streets = new THREE.LineSegments(local, new THREE.LineBasicMaterial({ color: 0x3a4341, transparent: true, opacity: 0.32, depthWrite: false }));
+    streets = new THREE.LineSegments(local, new THREE.LineBasicMaterial({ color: C.streets, transparent: true, opacity: 0.32, depthWrite: false }));
     streets.renderOrder = 1.5;
     streets.frustumCulled = false;
     scene.add(streets);
-    const classes = [['s', 0.04, 0x6c7980, 1, 0.6], ['u', 0.05, 0x93a1a9, 1.4, 0.75], ['i', 0.06, 0xc8d2d8, 2, 0.9]] as const;
+    const classes = [['s', 0.04, C.roads[0], 1, 0.6], ['u', 0.05, C.roads[1], 1.4, 0.75], ['i', 0.06, C.roads[2], 2, 0.9]] as const;
     classes.forEach(([k, y, color, width, opacity], c) => {
       const pos = segments(roads[k], y);
-      roadWidths.push([addLines(pos, 0x050605, width + 1.6, 0.85, 1.55 + c * 0.1).material, width + 1.6]);
-      roadWidths.push([addLines(pos, color, width, opacity, 1.6 + c * 0.1).material, width]);
+      roadWidths.push([addLines(pos, C.casing, width + 1.6, 0.85, 1.55 + c * 0.1).material, width + 1.6]);
+      roadWidths.push([addLines(pos, color, width, o.light ? 1 : opacity, 1.6 + c * 0.1).material, width]);
       // segment index -> route name, for the hover
       let at = 0;
       roads[k].forEach((line: number[], li: number) => {
@@ -354,10 +379,10 @@ export function createWorld(o: WorldOptions): World {
         }
       });
     });
-    picked = addLines([0, 0, 0, 0, 0, 0], 0xf4f7f2, 3.2, 0, 1.95);
+    picked = addLines([0, 0, 0, 0, 0, 0], C.picked, 3.2, 0, 1.95);
     for (const [text, lon, lat] of roads.labels as [string, number, number][]) {
       const el = document.createElement('b');
-      el.textContent = text;
+      el.textContent = text.replace(/^(I-|US |SH )/, ''); // the shield says the system, the label the number
       el.dataset.route = text.slice(0, 2).trim().replace('-', '');
       labels.append(el);
       // state highway numbers appear only closer in, so the district view stays readable
@@ -393,6 +418,7 @@ export function createWorld(o: WorldOptions): World {
     uTime: time,
     uPx: { value: px },
     uColors: { value: SEV_COLOR },
+    uSolid: { value: C.glowing ? 0 : 1 },
   };
   const lights = new THREE.Points(geo, new THREE.ShaderMaterial({
     vertexShader: POINT_VS, fragmentShader: POINT_FS, uniforms,
@@ -424,7 +450,7 @@ export function createWorld(o: WorldOptions): World {
   postGeo.setAttribute('color', new THREE.BufferAttribute(pc, 3));
   const posts = new THREE.LineSegments(postGeo, new THREE.ShaderMaterial({
     vertexShader: POST_VS, fragmentShader: POST_FS, uniforms,
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+    transparent: true, depthWrite: false, blending: GLOW,
   }));
   posts.frustumCulled = false;
   posts.renderOrder = 3;
@@ -450,7 +476,7 @@ export function createWorld(o: WorldOptions): World {
   const rings = new THREE.Mesh(ringGeo, new THREE.ShaderMaterial({
     vertexShader: RING_VS, fragmentShader: RING_FS,
     uniforms: { uDay: uniforms.uDay, uColor: { value: SEV_COLOR[0] } },
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    transparent: true, depthWrite: false, blending: GLOW, side: THREE.DoubleSide,
   }));
   rings.frustumCulled = false;
   rings.renderOrder = 3;
@@ -461,12 +487,12 @@ export function createWorld(o: WorldOptions): World {
   const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType }));
   composer.addPass(new RenderPass(scene, camera));
   const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.22, 0.2, 0.8);
-  composer.addPass(bloom);
+  if (C.glowing) composer.addPass(bloom); // light marks on paper do not glow
   composer.addPass(new OutputPass());
 
   // Camera: spherical coordinates around a target, eased towards the wanted values each frame.
   // Narrow screens look down more steeply so the taller frame shows ground, not the horizon.
-  const views = { ...VIEWS, district: { ...VIEWS.district, radius: host.clientWidth < 700 ? 500 : VIEWS.district.radius, polar: host.clientWidth < 700 ? 0.98 : VIEWS.district.polar } };
+  const views = { ...VIEWS, district: { ...VIEWS.district, radius: host.clientWidth < 700 ? 410 : VIEWS.district.radius, polar: host.clientWidth < 700 ? 0.98 : VIEWS.district.polar } };
   const cam = { ...views.district, target: views.district.target.clone() };
   const want = { ...views.district, target: views.district.target.clone() };
   const place = () => {
@@ -494,7 +520,7 @@ export function createWorld(o: WorldOptions): World {
   const paint = () => {
     for (const m of countyMeshes) {
       const name = m.userData.name as string;
-      (m.material as THREE.MeshBasicMaterial).color.set(name === selected ? FILL_SELECTED : m === hovered ? FILL_HOVER : FILL);
+      (m.material as THREE.MeshBasicMaterial).color.set(name === selected ? C.selected : m === hovered ? C.hover : C.fill);
     }
     dirty = true;
   };
@@ -592,7 +618,7 @@ export function createWorld(o: WorldOptions): World {
     camera.aspect = w / Math.max(h, 1);
     // Reframe the default district view on resize, without undoing a user zoom.
     const oldRadius = views.district.radius;
-    views.district.radius = w < 700 ? 500 : VIEWS.district.radius;
+    views.district.radius = w < 700 ? 410 : VIEWS.district.radius;
     if (!selected && want.radius === oldRadius) cam.radius = want.radius = views.district.radius;
     camera.fov = w < 700 ? 46 : 34;
     // Lift the picture above the timeline bar without moving the orbit's centre.

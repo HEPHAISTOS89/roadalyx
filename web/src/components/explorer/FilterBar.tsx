@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import { ArrowCounterClockwiseIcon, CaretDownIcon, FunnelIcon } from '@phosphor-icons/react';
 import Picker from './Picker';
+import { Seg } from '../ui';
 import { county, title } from '../../lib/format';
 import { isEmpty, NO_FILTERS, type Filters } from '../../lib/filters';
 import { SEVS, type Meta, type Sev } from '../../lib/types';
@@ -27,7 +28,7 @@ export default function FilterBar({ meta, filters, set }: Props) {
         <Picker label="County" choices={meta.filters.county} selected={filters.county} format={county}
           onChange={(v) => set({ county: v })} search />
 
-        <fieldset className="seg" aria-label="Severity">
+        <Seg as="fieldset" multi aria-label="Severity">
           <legend className="sr-only">Severity (KABCO)</legend>
           {SEVS.map((s) => (
             <button key={s} type="button" aria-pressed={filters.severity.includes(s)} className={`seg-sev ${s.toLowerCase()}`}
@@ -35,7 +36,7 @@ export default function FilterBar({ meta, filters, set }: Props) {
               <i className={`sw ${s.toLowerCase()}`} aria-hidden="true" />{s}<span className="sr-only"> {SEV_NAME[s]}</span>
             </button>
           ))}
-        </fieldset>
+        </Seg>
 
         <div className="years">
           <label>
@@ -64,12 +65,13 @@ export default function FilterBar({ meta, filters, set }: Props) {
         </div>
 
         <button type="button" className="btn small advanced-toggle" aria-expanded={advancedOpen} aria-controls={advancedId}
+          aria-label={`More filters${advancedCount > 0 ? ` (${advancedCount} active)` : ''}`}
           onClick={() => setAdvancedOpen((open) => !open)}>
-          <FunnelIcon size={16} aria-hidden="true" />More filters{advancedCount > 0 ? ` (${advancedCount} active)` : ''}
+          <FunnelIcon size={16} aria-hidden="true" />More{advancedCount > 0 ? ` · ${advancedCount}` : ''}
         </button>
         <button type="button" className="btn small reset" onClick={() => set(NO_FILTERS)} disabled={isEmpty(filters)}
           title={isEmpty(filters) ? 'No active filters' : 'Clear all filters and restore the full dataset'}>
-          <ArrowCounterClockwiseIcon size={16} aria-hidden="true" />Reset filters
+          <ArrowCounterClockwiseIcon size={16} aria-hidden="true" />Reset
         </button>
       </div>
 
@@ -79,14 +81,13 @@ export default function FilterBar({ meta, filters, set }: Props) {
         <Picker label="Factor" choices={meta.filters.factor} selected={filters.factor ? [filters.factor] : []} format={title}
           onChange={(v) => set({ factor: v[0] ?? null })} multiple={false} search />
 
-        <fieldset className="seg" aria-label="Road users involved">
+        <Seg as="fieldset" multi aria-label="Road users involved">
           <legend className="sr-only">Road users involved</legend>
           {VRU.map((u) => (
             <button key={u.value} type="button" aria-pressed={filters.vru.includes(u.value)}
               onClick={() => set({ vru: toggle(filters.vru, u.value) })}>{u.label}</button>
           ))}
-        </fieldset>
-
+        </Seg>
       </div>
     </div>
   );

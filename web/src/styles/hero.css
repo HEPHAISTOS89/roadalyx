@@ -1,134 +1,124 @@
+/* The District map shares the page ground: no frame, the district floats on the page under the bar. */
 .hero {
-  position: relative; height: calc(100svh - var(--bar-h)); min-height: 540px;
-  overflow: hidden; isolation: isolate; background: #0b0c0b;
+  --stage: var(--ground); --label: #a7a7a7; --label-strong: #e2e2e2; --halo: var(--ground);
+  position: relative; height: calc(100svh - var(--bar-h)); min-height: 560px;
+  overflow: hidden; isolation: isolate; background: var(--stage);
 }
+[data-theme='light'] .hero { --label: #5d5a54; --label-strong: #1f1f1f; }
 .hero-stage { position: absolute; inset: 0; }
-.hero-stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.hero-stage canvas { display: block; width: 100%; height: 100%; cursor: grab; animation: fade 900ms var(--ease); }
 .hero-stage canvas:active { cursor: grabbing; }
 .hero-stage[data-state='loading']::after {
   content: 'Loading crash locations…'; position: absolute; left: 50%; top: 55%; transform: translateX(-50%);
   color: var(--ink-3); font-size: var(--t-label);
 }
+
+/* Map convention: counties in spaced capitals, towns in plain type with a dot, route numbers in markers. */
 .hero-labels { position: absolute; inset: 0; pointer-events: none; }
 .hero-labels span {
-  position: absolute; left: 0; top: 0; font-size: 11.5px; letter-spacing: 0.02em; color: #9ea79c;
-  white-space: nowrap; will-change: transform, opacity; text-shadow: 0 0 8px #0b0c0b;
+  position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform, opacity;
+  text-transform: uppercase; letter-spacing: 0.14em; font-size: 10px; color: var(--label); text-shadow: 0 0 8px var(--halo);
 }
-/* Map convention: counties in spaced capitals, towns in plain type with a dot, route numbers in markers. */
-.hero-labels span { text-transform: uppercase; letter-spacing: 0.14em; font-size: 10px; color: #aab3a6; }
 .hero-labels i {
   position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 4px; white-space: nowrap;
-  font-style: normal; font-size: 11.5px; font-weight: 520; color: #dfe4dc; text-shadow: 0 0 6px #0b0c0b, 0 0 2px #0b0c0b;
+  font-style: normal; font-size: 11.5px; font-weight: 520; color: var(--label-strong); text-shadow: 0 0 6px var(--halo), 0 0 2px var(--halo);
   will-change: transform, opacity;
 }
-.hero-labels i::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: #dfe4dc; }
+.hero-labels i::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
 .hero-labels i[data-size='city'] { font-size: 13.5px; font-weight: 600; }
 /* Route numbers as plain road-map markers: monochrome, so colour stays reserved for severity. */
 .hero-labels b {
-  position: absolute; left: 0; top: 0; padding: 1px 5px; border-radius: 3px; white-space: nowrap;
-  font: 600 10.5px/1.35 var(--f-mono); letter-spacing: 0.02em; font-variant-numeric: tabular-nums;
-  color: #cfd8db; background: rgba(11, 12, 11, 0.86); border: 1px solid #5d686c; will-change: transform, opacity;
+  position: absolute; left: 0; top: 0; min-width: 22px; padding: 1px 5px; white-space: nowrap; text-align: center;
+  font: 700 10px/1.4 var(--f-ui); font-variant-numeric: tabular-nums; will-change: transform, opacity;
+  color: #151515; background: #fff; border: 1.5px solid #151515; border-radius: 3px 3px 9px 9px;
 }
-.hero-labels b[data-route='I'] { color: #0b0c0b; background: #d2dce0; border-color: #d2dce0; }
-.hero-labels b[data-route='US'] { border-color: #a4b2b8; }
-.hero-labels b[data-route='SH'] { color: #a9b4b7; font-weight: 500; }
+/* Route shields as on a US road map: Interstate blue with a red crown, US white, state highways a white oval. */
+.hero-labels b[data-route='I'] { color: #fff; background: linear-gradient(#c8102e 0 32%, #1d4f9c 32%); border-color: #fff; }
+.hero-labels b[data-route='SH'] { border-radius: 999px; }
+
+/* Everything floating on the stage shares the panel surface of the theme. */
+.hero-tip, .hero-hud, .hero-county, .hero-hint, .hero-views, .hero-full { background: var(--panel); box-shadow: var(--shadow-pop); }
 .hero-tip {
   position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; display: grid; gap: 2px;
-  padding: 8px 10px; border-radius: var(--r-m); background: rgba(18, 20, 18, 0.94); border: 1px solid var(--rule-2);
-  font-size: var(--t-label); color: var(--ink-2); white-space: nowrap;
+  padding: 8px 12px; border-radius: var(--r-m); font-size: var(--t-label); color: var(--ink-2); white-space: nowrap;
 }
 .hero-tip b { color: var(--ink); font-weight: 600; }
-.hero-tip .hero-tip-road { font-family: var(--f-mono); font-size: 12px; }
 .hero-fallback { position: absolute; left: var(--gutter); right: var(--gutter); top: 50%; color: var(--ink-2); max-width: 52ch; }
 
-/* Copy sits in a column the map's brightest area (Lubbock, centre right) never reaches. */
+/* Title block, top left, in a column the bright centre of the district never reaches. */
 .hero-copy {
-  position: absolute; z-index: 2; left: var(--gutter); top: clamp(28px, 6vh, 72px); width: min(560px, calc(100% - 2 * var(--gutter)));
-  display: grid; gap: var(--s4); pointer-events: none;
+  position: absolute; z-index: 2; left: var(--gutter); top: clamp(16px, 3vh, 36px); width: min(560px, calc(100% - 2 * var(--gutter)));
+  display: grid; gap: var(--s3); justify-items: start; pointer-events: none;
 }
 .hero-copy > * { pointer-events: auto; }
-.actions { display: flex; gap: var(--s3); flex-wrap: wrap; }
-
-.hero-views {
-  display: inline-flex; padding: 3px; border-radius: var(--r-pill); background: rgba(18, 20, 18, 0.85); border: 1px solid var(--rule-2);
+.hero-title {
+  font: italic 400 var(--t-display)/0.98 var(--f-display); letter-spacing: -0.02em; color: var(--label-strong);
+  text-shadow: 0 0 24px var(--halo); animation: rise 800ms var(--ease) both;
 }
-.hero-views button { border: 0; background: none; padding: 6px 14px; border-radius: var(--r-pill); color: var(--ink-2); font-size: var(--t-label); }
-.hero-views button[aria-pressed='true'] { background: var(--raise); color: var(--ink); }
-.hero-views button:disabled { opacity: 0.45; cursor: default; }
+.hero-context { color: var(--label); font-size: var(--t-ui); animation: rise 800ms 80ms var(--ease) both; }
+.hero-context b { color: var(--label-strong); font-weight: 600; }
+.actions { display: flex; gap: var(--s3); flex-wrap: wrap; margin-top: var(--s2); animation: rise 800ms 160ms var(--ease) both; }
 
+.hero-side {
+  position: absolute; z-index: 3; right: var(--gutter); top: clamp(16px, 3vh, 36px); width: min(300px, calc(100% - 2 * var(--gutter)));
+  display: grid; grid-template-columns: 1fr auto; gap: var(--s2); justify-items: end; align-items: center;
+}
+.hero-side .hero-county { grid-column: 1 / -1; }
+.hero-full { color: var(--ink); }
+.hero:fullscreen { height: 100%; }
+.hero-county {
+  width: 100%; display: grid; gap: var(--s3); justify-items: start; padding: var(--s4); border-radius: var(--r-l);
+  animation: pop 260ms var(--spring); transform-origin: top right;
+}
+.hero-county-head { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.hero-county h2 { font-size: var(--t-h3); }
+.hero-county dl { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin: 0; width: 100%; }
+.hero-county dt { font-size: var(--t-micro); color: var(--ink-3); }
+.hero-county dd { margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -0.03em; }
+.hero-hint {
+  position: absolute; z-index: 2; right: var(--gutter); bottom: 120px; padding: 6px 14px; border-radius: var(--r-pill);
+  font-size: var(--t-micro); color: var(--ink-2); pointer-events: none; animation: rise 600ms 1s var(--ease) both;
+}
+
+/* Timeline along the bottom of the frame. */
 .hero-hud {
-  position: absolute; z-index: 2; left: var(--gutter); right: var(--gutter); bottom: 28px;
+  position: absolute; z-index: 2; left: var(--gutter); right: var(--gutter); bottom: clamp(16px, 3vh, 28px);
   display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: var(--s5);
-  padding: 10px 14px 10px 10px; border-radius: var(--r-l); background: rgba(14, 15, 14, 0.82);
-  border: 1px solid var(--rule); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  padding: 10px 18px 10px 10px; border-radius: var(--r-pill); animation: rise 700ms 240ms var(--ease) both;
 }
+.hero-hud > .icon-btn { background: var(--accent); color: var(--accent-ink); }
 .hud-track { position: relative; display: block; padding-bottom: 14px; }
-.hud-track input { width: 100%; margin: 0; accent-color: var(--accent); }
+.hud-track input { width: 100%; margin: 0; accent-color: var(--ink); }
 .hud-years { position: absolute; left: 8px; right: 8px; bottom: -2px; height: 14px; pointer-events: none; }
 .hud-years i { position: absolute; transform: translateX(-50%); font-style: normal; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.hud-when { display: grid; gap: 2px; min-width: 112px; }
-.hud-date { margin: 0; font-size: 1.125rem; font-weight: 560; color: var(--ink); }
-.hud-sub { margin: 0; font-size: var(--t-micro); color: var(--ink-3); white-space: nowrap; }
+.hud-when { display: grid; gap: 2px; min-width: 112px; max-width: 180px; }
+.hud-date { margin: 0; font-size: 1.125rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ink); }
+.hud-sub { margin: 0; font-size: var(--t-micro); color: var(--ink-3); }
 .hud-sub .num { color: var(--ink-2); }
-
-/* The legend is the counter: each swatch glows like its lights on the map. */
-.hud-legend { display: flex; gap: var(--s5); margin: 0; padding-left: var(--s5); border-left: 1px solid var(--rule); }
+/* The legend is the counter: each swatch matches its lights on the map. */
+.hud-legend { display: flex; gap: var(--s5); margin: 0; padding-left: var(--s5); box-shadow: -1px 0 0 var(--rule-soft); }
 .hud-legend div { display: grid; gap: 2px; --c: var(--sev-c); }
 .hud-legend .sev-k { --c: var(--sev-k); } .hud-legend .sev-a { --c: var(--sev-a); } .hud-legend .sev-b { --c: var(--sev-b); }
 .hud-legend dt { display: flex; align-items: center; gap: 6px; font-size: var(--t-micro); color: var(--ink-3); white-space: nowrap; }
-.hud-legend dt i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px 1px color-mix(in srgb, var(--c) 70%, transparent); }
+.hud-legend dt i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
 .hud-legend dt b { color: var(--ink-2); font-weight: 600; }
-.hud-legend dd { margin: 0; font-size: 1.125rem; font-weight: 560; color: var(--ink); min-width: 5ch; }
+.hud-legend dd { margin: 0; font-size: 1.125rem; font-weight: 600; letter-spacing: -0.02em; color: var(--ink); min-width: 5ch; }
 
 @media (max-width: 1060px) {
-  .hero-hud { grid-template-columns: auto 1fr auto; }
-  .hud-legend { grid-column: 1 / -1; justify-content: space-between; padding-left: 0; border-left: 0; }
+  .hero-hud { grid-template-columns: auto 1fr auto; border-radius: var(--r-l); }
+  .hud-legend { grid-column: 1 / -1; justify-content: space-between; padding-left: 0; box-shadow: none; }
 }
-@media (max-width: 520px) {
-  .hero { height: auto; min-height: 0; display: flex; flex-direction: column; }
-  .hero-stage { position: relative; height: 62svh; min-height: 380px; order: 2; }
-  .hero-copy { position: relative; left: auto; top: auto; width: auto; padding: var(--s5) var(--gutter) var(--s4); order: 1; }
-
-  .hero-hud { position: relative; left: auto; right: auto; bottom: auto; margin: var(--s3) var(--gutter) 0; order: 4; }
-}
+@media (min-width: 521px) and (max-width: 1060px) { .hero-hint { bottom: 184px; } }
 @media (max-width: 700px) { .hud-years i:nth-child(even) { display: none; } }
-
-.hero-side {
-  position: absolute; z-index: 3; right: var(--gutter); top: clamp(28px, 6vh, 72px); width: min(300px, calc(100% - 2 * var(--gutter)));
-  display: grid; grid-template-columns: 1fr auto; gap: var(--s3); justify-items: end; align-items: center;
-}
-.hero-side .hero-county { grid-column: 1 / -1; }
-.hero-full { background: rgba(18, 20, 18, 0.85); border: 1px solid var(--rule-2); }
-.hero:fullscreen { height: 100%; }
-.hero-side .hero-views { position: static; }
-.hero-county {
-  width: 100%; display: grid; gap: var(--s3); padding: var(--s4); border-radius: var(--r-l);
-  background: rgba(16, 18, 16, 0.94); border: 1px solid var(--rule-2); box-shadow: 0 16px 36px rgba(0,0,0,0.45);
-  animation: county-in 180ms var(--ease);
-}
-@keyframes county-in { from { opacity: 0; transform: translateY(-4px); } }
-.hero-county-head { display: flex; align-items: center; justify-content: space-between; }
-.hero-county h2 { font-size: var(--t-h3); }
-.hero-county dl { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin: 0; }
-.hero-county dt { font-size: var(--t-micro); color: var(--ink-3); }
-.hero-county dd { margin: 0; font-size: 1.125rem; font-weight: 560; }
-.hero-county .finding-cta { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-label); color: var(--accent); text-decoration: none; font-weight: 520; }
-.hero-hint {
-  position: absolute; z-index: 2; right: var(--gutter); bottom: 112px; padding: 6px 12px; border-radius: var(--r-pill);
-  background: rgba(14, 15, 14, 0.8); border: 1px solid var(--rule); font-size: var(--t-micro); color: var(--ink-2); pointer-events: none;
-}
-
 @media (max-width: 520px) {
+  .hero { height: auto; min-height: 0; display: flex; flex-direction: column; margin: 0; border-radius: 0; background: var(--ground); overflow: visible; }
+  .hero-stage { position: relative; height: 62svh; min-height: 380px; order: 2; margin: 0 var(--gutter); border-radius: var(--r-l); overflow: hidden; background: var(--stage); }
+  .hero-copy { position: relative; left: auto; top: auto; width: auto; padding: var(--s3) var(--gutter) var(--s4); order: 1; }
+  .hero-title, .hero-context b { color: var(--ink); text-shadow: none; }
+  .hero-context { color: var(--ink-3); }
   .hero-side { position: relative; right: auto; top: auto; width: auto; margin: var(--s3) var(--gutter) 0; order: 3; justify-items: start; }
-  .hero-hint { bottom: 42px; }
-}
-@media (max-width: 520px) {
+  .hero-hud { position: relative; left: auto; right: auto; bottom: auto; margin: var(--s3) var(--gutter) var(--s5); order: 4; }
+  .hero-hint { bottom: 12px; right: calc(var(--gutter) + 12px); }
   .hud-years i { display: none; }
   .hud-years i:first-child, .hud-years i:last-child { display: block; }
 }
-
-.hero-context { color: var(--ink-2); font-size: var(--t-label); }
-.hero-copy { gap: var(--s3); }
-.hud-sub { white-space: normal; }
-.hud-when { max-width: 180px; }
-@media (min-width: 521px) and (max-width: 1060px) { .hero-hint { bottom: 184px; } }

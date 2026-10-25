@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowSquareOutIcon, DownloadSimpleIcon, XIcon } from '@phosphor-icons/react';
+import { ArrowRightIcon, ArrowSquareOutIcon, CaretDownIcon, DownloadSimpleIcon, XIcon } from '@phosphor-icons/react';
 import { useApi } from '../../lib/api';
-import { county, dateLong, int, pct, title } from '../../lib/format';
+import { county, dateLong, int, pct, road, title } from '../../lib/format';
 import { api, slug } from '../../lib/filters';
 import type { BreakdownRes, Crash, CrashPage, Group } from '../../lib/types';
 
@@ -50,6 +50,7 @@ export function Breakdown({ query, onFilter }: { query: string; onFilter: (key: 
           <select value={dim.by} onChange={(e) => setDim(DIMENSIONS.find((d) => d.by === e.target.value)!)}>
             {DIMENSIONS.map((d) => <option key={d.by} value={d.by}>{d.label}</option>)}
           </select>
+          <CaretDownIcon size={14} aria-hidden="true" />
         </label>
       </div>
       {res.error && <p className="error-box" role="alert">{res.error}</p>}
@@ -114,9 +115,10 @@ export function Records({ query, total, onSelect, selected }: { query: string; t
               <option value="oldest">Oldest first</option>
               <option value="severity">Most severe first</option>
             </select>
+            <CaretDownIcon size={14} aria-hidden="true" />
           </label>
           <a className="btn small" href={api('/crashes', query, 'format=csv')} download>
-            <DownloadSimpleIcon aria-hidden="true" />Download CSV{total != null ? ` (${int(total)})` : ''}
+            <DownloadSimpleIcon aria-hidden="true" />CSV{total != null ? ` · ${int(total)}` : ''}
           </a>
         </div>
       </div>
@@ -135,12 +137,12 @@ export function Records({ query, total, onSelect, selected }: { query: string; t
               <tr key={c.id} className={selected === c.id ? 'sel' : ''}>
                 <th scope="row">
                   <button type="button" className="link" onClick={() => onSelect(c.id)} aria-label={`Open crash ${c.id}, ${dateLong(c.date)}`}>
-                    {dateLong(c.date)}<span className="muted num"> {c.time ?? ''}</span>
+                    {dateLong(c.date)}<span className="muted num"> {c.time ?? ''}</span><ArrowRightIcon className="row-go" size={13} aria-hidden="true" />
                   </button>
                 </th>
                 <td><span className={`sev-chip ${c.severity.toLowerCase()}`}>{c.severity}</span></td>
                 <td>{county(c.county)}</td>
-                <td className="mono">{c.street ?? '–'}</td>
+                <td>{c.street ? road(c.street) : '–'}</td>
                 <td>{title(c.road_class)}</td>
                 <td>{c.factors[0] ? title(c.factors[0]) : '–'}{c.factors.length > 1 ? <span className="muted"> +{c.factors.length - 1}</span> : null}</td>
                 <td className="num-col">{c.people}</td>
@@ -178,7 +180,7 @@ export function CrashCard({ id, onClose }: { id: number; onClose: () => void }) 
   return (
     <dialog ref={dialog} className="crash-card" aria-labelledby="crash-h" onCancel={(e) => { e.preventDefault(); onClose(); }}>
       <div className="crash-card-head">
-        <h3 id="crash-h">Crash <span className="mono">{id}</span></h3>
+        <h3 id="crash-h">Crash <span className="num">{id}</span></h3>
         <button type="button" className="icon-btn small" onClick={onClose} aria-label="Close crash record"><XIcon aria-hidden="true" /></button>
       </div>
       {res.error && <p className="error-box" role="alert">{res.error}</p>}
@@ -194,18 +196,18 @@ export function CrashCard({ id, onClose }: { id: number; onClose: () => void }) 
             <dt>Seriously injured</dt><dd>{c.serious_injuries}</dd>
             <dt>Injured (not killed)</dt><dd>{c.injuries}</dd>
             <dt>Persons involved</dt><dd>{c.people}</dd>
-            <dt>Road users</dt><dd>{c.vru.length ? c.vru.map(title).join(', ') : 'No pedestrian, cyclist or motorcyclist recorded'}</dd>
+            <dt>Road users</dt><dd>{c.vru.length ? c.vru.map((u) => u[0].toUpperCase() + u.slice(1)).join(', ') : 'No pedestrian, cyclist or motorcyclist recorded'}</dd>
             <dt>Factors</dt><dd>{c.factors.map(title).join('; ') || '–'}</dd>
             <dt>Collision</dt><dd>{title(c.collision)}</dd>
             <dt>First harmful event</dt><dd>{title(c.first_event)}</dd>
-            <dt>Street</dt><dd className="mono">{c.street ?? '–'}</dd>
+            <dt>Street</dt><dd>{c.street ? road(c.street) : '–'}</dd>
             <dt>Road class</dt><dd>{title(c.road_class)}</dd>
             <dt>Speed limit</dt><dd>{c.speed_limit ? `${c.speed_limit} mph` : 'Not recorded'}</dd>
             <dt>Intersection</dt><dd>{title(c.intersection)}</dd>
             <dt>Weather</dt><dd>{title(c.weather)}</dd>
             <dt>Area</dt><dd>{c.rural == null ? '–' : c.rural ? 'Rural' : 'Urban'}</dd>
             <dt>Work zone / school zone</dt><dd>{yesNo(c.construction_zone)} / {yesNo(c.school_zone)}</dd>
-            <dt>Location</dt><dd className="mono">{c.lat != null && c.lon != null ? `${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}` : 'Not recorded'}</dd>
+            <dt>Location</dt><dd className="num">{c.lat != null && c.lon != null ? `${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}` : 'Not recorded'}</dd>
           </dl>
           <a className="btn small" href={`/api/v1/crashes/${id}`} target="_blank" rel="noreferrer">
             <ArrowSquareOutIcon aria-hidden="true" />JSON

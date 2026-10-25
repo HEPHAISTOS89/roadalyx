@@ -361,17 +361,19 @@ I kept the design small: one filter implementation for the aggregate and search 
 
 I built the frontend in React ([`web/`](web/)) on the same public API, and the same Lambda function serves it. It has two pages:
 
-- **[Analysis](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis)**, for working with the data. Filters (county, severity, years, road class, factor, road users) update everything at once and are kept in the URL, so a view can be shared. It shows the key figures, a map of every located crash, severity and factor charts, trends on four time axes, a day-by-hour grid, a breakdown table, the crash records, and a CSV download of the current selection. On the map, a Location filter splits intersection, segment and driveway crashes, and a Top corridors list ranks streets by crashes: clicking one filters the whole page to that street. A Hotspots view shows crash density, and a 3D view tilts the map over the buildings.
-- **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/district-map)**, a 3D view of the 17 counties, with their roads and towns from Census TIGER/Line, where the crashes build up month by month from 2020 to 2026. Clicking a county opens its figures and a link to the Analysis page.
+- **[Analysis](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis)**, for working with the data. Filters (county, severity, years, road class, factor, road users) update everything at once and are kept in the URL, so a view can be shared. It shows the key figures, a map of every located crash, severity and factor charts, trends on four time axes, a day-by-hour grid, a breakdown table, the crash records, and a CSV download of the current selection. On the map, a Location filter splits intersection, segment and driveway crashes, and a Top corridors list ranks streets by crashes: clicking one filters the whole page to that street. Crashes at the same spot merge into one mark that grows with their number, so a hot intersection stands out. Hovering a county shows its figures and a click filters the page to it. Highways are drawn as on a road map, with Interstate, US and state route shields. A Hotspots view shows crash density, and a 3D view tilts the map over the buildings.
+- **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/district-map)**, a 3D view of the 17 counties, with their roads and towns from Census TIGER/Line, where the crashes build up month by month from 2020 to 2026: lights at night in the dark theme, a paper road map in the light one. Clicking a county opens its figures and a link to the Analysis page.
+
+Both pages have a light and a dark theme (saved per browser, following the system by default). The interface is black and white so the only colours are the K, A, B and C severities.
 
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis">
-    <img src="docs/assets/analysis.jpg" width="880" alt="The Analysis page: filters for county, severity and years; totals of 24,261 injury crashes, 624 fatal and 1,546 suspected serious; a crash map of the 17 counties with a Location filter (intersection, segment, driveway) and the top corridors, led by Loop 289, US 62 and US 84; severity bars and the ranked contributing factors.">
+    <img src="docs/assets/analysis.jpg" width="880" alt="The Analysis page in the light theme: filters for county, severity and years; totals of 24,261 injury crashes, 624 fatal and 1,546 suspected serious; a crash map of the 17 counties with highways and I-27 shields and a Location filter (intersection, segment, driveway); severity bars and the ranked contributing factors.">
   </a>
 </p>
 
 <p align="center">
-  <img src="docs/assets/district-map.jpg" width="880" alt="The District map: the 17 counties in 3D, with every located crash drawn as a light and fatal and serious crashes as red and orange posts, a timeline from 2020 to 2026, and counts of K, A, B and C crashes.">
+  <img src="docs/assets/district-map.jpg" width="880" alt="The District map in the dark theme: the 17 counties in 3D, with every located crash drawn as a light and fatal and serious crashes as red and orange posts, a timeline from 2020 to 2026, and counts of K, A, B and C crashes.">
 </p>
 
 Charts have text equivalents (tooltips and data tables), work with the keyboard, and respect the reduced-motion setting.
