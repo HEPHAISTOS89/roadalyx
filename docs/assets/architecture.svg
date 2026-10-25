@@ -23,7 +23,7 @@
 
   <!-- 1. Publish -->
   <circle cx="40" cy="40" r="12" fill="#5b6f52"/><text x="40" y="44.5" class="num" text-anchor="middle">1</text>
-  <text x="60" y="45" class="step">PUBLISH THE DATA · on a laptop, once per CRIS export</text>
+  <text x="60" y="45" class="step">PUBLISH THE DATA</text>
 
   <rect x="28" y="66" width="214" height="84" rx="10" fill="#fff" stroke="#dbe2d5"/>
   <text x="46" y="96" class="h">CRIS export</text>

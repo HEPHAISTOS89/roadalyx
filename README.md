@@ -247,12 +247,12 @@ fatal_and_serious = pd.read_csv(f"{url}?format=csv&county=lubbock&severity=K,A")
 ## Deployment on AWS
 
 <p align="center">
-  <img src="docs/assets/architecture.svg" width="880" alt="Architecture. 1, publish the data: on a laptop, python -m roadalyx turns the CRIS export (67,906 person rows) into crashes.json.gz (24,261 crashes); scripts/deploy.sh uploads it to a private S3 bucket. 2, serve a request: an analyst sends an HTTPS GET to the Lambda Function URL; Lambda runs FastAPI with Mangum, reads the dataset from S3 once per cold start, filters it in memory and returns JSON or CSV, writing one log line per request to CloudWatch Logs. An IAM role limits Lambda to that S3 object and its logs; CloudFormation creates the function, URL, role and log group.">
+  <img src="docs/assets/architecture.svg" width="880" alt="Architecture. 1, publish the data: before deployment, python -m roadalyx turns the CRIS export (67,906 person rows) into crashes.json.gz (24,261 crashes); scripts/deploy.sh uploads it to a private S3 bucket. 2, serve a request: an analyst sends an HTTPS GET to the Lambda Function URL; Lambda runs FastAPI with Mangum, reads the dataset from S3 once per cold start, filters it in memory and returns JSON or CSV, writing one log line per request to CloudWatch Logs. An IAM role limits Lambda to that S3 object and its logs; CloudFormation creates the function, URL, role and log group.">
 </p>
 
 ### Why this architecture
 
-The cleaned dataset is small: 24,261 records, 0.9 MB compressed. Held in memory, any filter answers in milliseconds, so **the whole application is one Lambda function** that loads the file once and computes every answer from memory. There is no database to run and no server to keep on, and an idle function costs nothing. The cleaning (pandas) runs once per export, on a laptop, rather than on every request.
+The cleaned dataset is small: 24,261 records, 0.9 MB compressed. Held in memory, any filter answers in milliseconds, so **the whole application is one Lambda function** that loads the file once and computes every answer from memory. There is no database to run and no server to keep on, and an idle function costs nothing. The cleaning (pandas) runs once per export before deployment, not on every request.
 
 ### The services, and why each one
 
@@ -267,7 +267,7 @@ The cleaned dataset is small: 24,261 records, 0.9 MB compressed. Held in memory,
 
 ### How the data flows
 
-**1 · Publish the data** (on a laptop, once per CRIS export)
+**1 · Publish the data**
 
 1. `python -m roadalyx` reads the CSV, checks it against its header, builds one record per crash and writes `crashes.json.gz`.
 2. `scripts/deploy.sh` uploads that file to the private bucket and passes its version (ETag) to CloudFormation, so new Lambda instances load the new data.
@@ -340,7 +340,7 @@ I use one filter implementation for the aggregate and search endpoints, one Lamb
 - Without traffic volumes, I can say where crashes happen and how severe they are, but not which road is the most dangerous. With TxDOT's traffic counts (AADT), I would compute crash rates per road segment.
 - The last months may still grow: the data ends on 20 October 2026 and crash reports keep arriving.
 - Anyone can call the public URL as often as they like. Before sharing it widely, I would put API Gateway with a usage limit in front of it.
-- A new export is processed on my laptop. Next, I would have S3 start the processing when a file is uploaded.
+- New exports are processed manually before deployment. Next, I would have S3 start the processing when a file is uploaded.
 
 ## The frontend
 

@@ -5,9 +5,7 @@
   font-display: swap;
 }
 
-/* Night survey: asphalt ground, ink text, one sage action accent. Colour that carries meaning
-   is reserved for KABCO severity, an ordinal ramp (lightness falls from C to K), checked with the
-   dataviz palette validator against --ground. */
+/* Dark surfaces, a sage action accent, and consistent K/A/B/C severity colours. */
 :root {
   --ground: #0e0f0e;
   --ground-2: #121412;
