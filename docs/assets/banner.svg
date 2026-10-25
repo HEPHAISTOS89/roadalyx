@@ -1,50 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="880" height="220" viewBox="0 0 880 220" role="img" aria-labelledby="t d">
-  <title id="t">Roadalyx</title>
-  <desc id="d">TxDOT CRIS crash data for the Lubbock District: pipeline, REST API on AWS, map.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="150" viewBox="0 0 880 150" role="img" aria-label="Roadalyx">
+  <rect x="1" y="1" width="878" height="148" rx="14" fill="#0e0f0e" stroke="#384137"/>
 
-  <rect x="1" y="1" width="878" height="218" rx="14" fill="#0e0f0e" stroke="#384137"/>
-
-  <!-- mark -->
-  <g transform="translate(40 62)">
-    <rect x="0" y="0" width="88" height="88" rx="20" fill="#141614" stroke="#384137"/>
-    <g transform="translate(13 13) scale(1.94)">
-      <path d="M9 25 L14.5 7 M23 25 L17.5 7" fill="none" stroke="#dce5d8" stroke-width="2.2" stroke-linecap="round"/>
-      <circle cx="16" cy="18" r="3.4" fill="#d31246">
-        <animate attributeName="r" values="3.4;4.6;3.4" dur="2.4s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="1;0.55;1" dur="2.4s" repeatCount="indefinite"/>
+  <g transform="translate(392 27)">
+    <rect x="0" y="0" width="96" height="96" rx="22" fill="#141614" stroke="#384137"/>
+    <g transform="translate(16 16) scale(2)">
+      <path d="M9 25 L14.5 7" fill="none" stroke="#dce5d8" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="20" stroke-dashoffset="20">
+        <animate attributeName="stroke-dashoffset" from="20" to="0" begin="0.2s" dur="0.9s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+      </path>
+      <path d="M23 25 L17.5 7" fill="none" stroke="#dce5d8" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="20" stroke-dashoffset="20">
+        <animate attributeName="stroke-dashoffset" from="20" to="0" begin="0.6s" dur="0.9s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
+      </path>
+      <circle cx="16" cy="18" r="3.4" fill="#d31246" opacity="0">
+        <animate attributeName="opacity" from="0" to="1" begin="1.4s" dur="0.35s" fill="freeze"/>
+        <animate attributeName="r" values="3.4;4.6;3.4" begin="1.4s" dur="2.4s" repeatCount="indefinite"/>
       </circle>
     </g>
   </g>
-
-  <!-- wordmark -->
-  <text x="156" y="106" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="42" font-weight="700" letter-spacing="0.5" fill="#dce5d8">Roadalyx</text>
-  <text x="158" y="136" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="15" fill="#93a091">TxDOT CRIS crashes for the Lubbock District — cleaned in Python, served on AWS, explored on a map.</text>
-
-  <!-- key figures, revealed one by one -->
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13.5" fill="#c9d4c4">
-    <text x="158" y="168" opacity="0">67,906 people<animate attributeName="opacity" from="0" to="1" begin="0.9s" dur="0.4s" fill="freeze"/></text>
-    <text x="278" y="168" opacity="0" fill="#d31246">·<animate attributeName="opacity" from="0" to="1" begin="1.1s" dur="0.3s" fill="freeze"/></text>
-    <text x="292" y="168" opacity="0">24,261 injury crashes<animate attributeName="opacity" from="0" to="1" begin="1.3s" dur="0.4s" fill="freeze"/></text>
-    <text x="472" y="168" opacity="0" fill="#d31246">·<animate attributeName="opacity" from="0" to="1" begin="1.5s" dur="0.3s" fill="freeze"/></text>
-    <text x="486" y="168" opacity="0">17 counties<animate attributeName="opacity" from="0" to="1" begin="1.7s" dur="0.4s" fill="freeze"/></text>
-    <text x="588" y="168" opacity="0" fill="#d31246">·<animate attributeName="opacity" from="0" to="1" begin="1.9s" dur="0.3s" fill="freeze"/></text>
-    <text x="602" y="168" opacity="0">1 clean API on AWS<animate attributeName="opacity" from="0" to="1" begin="2.1s" dur="0.4s" fill="freeze"/></text>
-  </g>
-
-  <!-- road that draws itself, with crashes appearing -->
-  <path id="road" d="M 520 178 C 600 128, 660 190, 730 150 S 830 118, 852 132" fill="none" stroke="#3c443a" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="420" stroke-dashoffset="420">
-    <animate attributeName="stroke-dashoffset" from="420" to="0" begin="0.4s" dur="1.8s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1"/>
-  </path>
-  <g fill="#dce5d8">
-    <circle cx="556" cy="161" r="2.6" opacity="0"><animate attributeName="opacity" from="0" to="0.85" begin="1.0s" dur="0.3s" fill="freeze"/></circle>
-    <circle cx="601" cy="151" r="2.6" opacity="0"><animate attributeName="opacity" from="0" to="0.85" begin="1.2s" dur="0.3s" fill="freeze"/></circle>
-    <circle cx="648" cy="172" r="2.6" opacity="0"><animate attributeName="opacity" from="0" to="0.85" begin="1.4s" dur="0.3s" fill="freeze"/></circle>
-    <circle cx="688" cy="168" r="2.6" opacity="0"><animate attributeName="opacity" from="0" to="0.85" begin="1.6s" dur="0.3s" fill="freeze"/></circle>
-    <circle cx="762" cy="141" r="2.6" opacity="0"><animate attributeName="opacity" from="0" to="0.85" begin="1.8s" dur="0.3s" fill="freeze"/></circle>
-    <circle cx="812" cy="124" r="2.6" opacity="0"><animate attributeName="opacity" from="0" to="0.85" begin="2.0s" dur="0.3s" fill="freeze"/></circle>
-  </g>
-  <circle cx="722" cy="154" r="4" fill="#d31246" opacity="0">
-    <animate attributeName="opacity" from="0" to="1" begin="2.2s" dur="0.3s" fill="freeze"/>
-    <animate attributeName="r" values="4;5.6;4" begin="2.2s" dur="2.4s" repeatCount="indefinite"/>
-  </circle>
 </svg>
