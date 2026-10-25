@@ -28,7 +28,7 @@ I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The
 
 ## Contents
 
-1. [The assessment, part by part](#the-assessment-part-by-part)
+1. [Where to find each requirement](#where-to-find-each-requirement)
 2. [Run it locally](#run-it-locally)
 3. [The data: what I found and the three results](#the-data-what-i-found-and-the-three-results)
 4. [The API](#the-api)
@@ -37,7 +37,7 @@ I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The
 7. [Limitations and what I would do next](#limitations-and-what-i-would-do-next)
 8. [The frontend](#the-frontend)
 
-## The assessment, part by part
+## Where to find each requirement
 
 | Requirement | Where it is |
 |---|---|
