@@ -32,7 +32,6 @@ export default function Shell({ children }: { children: ReactNode }) {
         <nav aria-label="Main">
           <NavLink to="/district-map">District map</NavLink>
           <NavLink to="/analysis">Analysis</NavLink>
-          <a href="/data-access">Data access</a>
         </nav>
       </header>
       <main id="main" tabIndex={-1}>{children}</main>
@@ -41,6 +40,7 @@ export default function Shell({ children }: { children: ReactNode }) {
         <footer className="foot">
           <p>Data: TxDOT CRIS, Lubbock District. County lines: US Census Bureau.</p>
           <ul>
+            <li><a href="/api/docs">API docs</a></li>
             <li><a href={`${REPO}/blob/main/notebooks/eda.ipynb`}>EDA notebook</a></li>
             <li><a href={REPO}>Source code</a></li>
           </ul>
