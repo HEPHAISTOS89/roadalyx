@@ -186,7 +186,7 @@ export default function Hero() {
         <h1 id="hero-h" className="sr-only">Injury crashes in the TxDOT Lubbock District, 2020 to 2026</h1>
         <p className="hero-context">Lubbock District · TxDOT CRIS · 2020–2026</p>
         <div className="actions">
-          <Link className="btn primary" to="/explorer">Explore crashes<ArrowRightIcon aria-hidden="true" /></Link>
+          <Link className="btn primary" to="/analysis">Explore crashes<ArrowRightIcon aria-hidden="true" /></Link>
         </div>
       </div>
 
@@ -218,7 +218,7 @@ export default function Hero() {
                 </dl>
               </>
             ) : <p className="muted">Loading…</p>}
-            <Link className="finding-cta" to={`/explorer?county=${slug(picked)}`}>Open in Analysis<ArrowRightIcon aria-hidden="true" /></Link>
+            <Link className="finding-cta" to={`/analysis?county=${slug(picked)}`}>Open in Analysis<ArrowRightIcon aria-hidden="true" /></Link>
           </section>
         )}
       </div>

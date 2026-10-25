@@ -1,6 +1,6 @@
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import '@fontsource-variable/jetbrains-mono';
 import './styles/tokens.css';
 import './styles/app.css';
@@ -9,17 +9,19 @@ import Shell from './components/Shell';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
 
-// Load the Explorer map on demand so the landing page stays light.
+// Load the Analysis page (and its map) on demand so the landing page stays light.
 const Explorer = lazy(() => import('./pages/Explorer'));
 
 function Pages() {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   return (
     <Boundary resetKey={pathname}>
       <Suspense fallback={<div className="page-loading" role="status">Loading…</div>}>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/explorer" element={<Explorer />} />
+          <Route path="/analysis" element={<Explorer />} />
+          {/* The page was called Explorer at first: old links keep working, filters included. */}
+          <Route path="/explorer" element={<Navigate to={`/analysis${search}`} replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

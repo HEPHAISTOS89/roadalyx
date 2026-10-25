@@ -19,7 +19,7 @@
   <a href="tests/"><img alt="Tests: 92 Python and 13 frontend, passing" src="https://img.shields.io/badge/tests-92_%2B_13_passing-2EA44F?style=flat-square"></a>
 </p>
 <p align="center">
-  <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer">
+  <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis">
     <img src="docs/assets/analysis.jpg" width="880" alt="The Analysis page: filters for county, severity and years; totals of 24,261 injury crashes, 624 fatal and 1,546 suspected serious; a crash map of the 17 counties; severity bars and the ranked contributing factors.">
   </a>
 </p>
@@ -47,7 +47,7 @@ I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The
 | **Deployment**: AWS Free Tier, public URL, no credentials in code | [Live URL](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/) · [`infra/template.yaml`](infra/template.yaml), [`scripts/deploy.sh`](scripts/deploy.sh) |
 | **README and dependencies** | This file · [`requirements.txt`](requirements.txt) (local), [`requirements-lambda.txt`](requirements-lambda.txt) (Lambda) |
 | **Tests** | [`tests/`](tests/): cleaning rules, API filters and errors, totals that must match across endpoints |
-| **Frontend** for a traffic safety analyst | [`web/`](web/) · [Analysis page](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer) |
+| **Frontend** for a traffic safety analyst | [`web/`](web/) · [Analysis page](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis) |
 
 ## Run it locally
 
@@ -319,7 +319,7 @@ Everything else stays small: one set of filters shared by every endpoint, one La
 
 A React frontend in [`web/`](web/), served by the same Lambda function and built only on the public API. It has two pages:
 
-- **[Analysis](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer)**, for working with the data. Filters (county, severity, years, road class, factor, road users) update everything at once and are kept in the URL, so a view can be shared. It shows the key figures, a map of every located crash, severity and factor charts, trends on four time axes, a day-by-hour grid, a breakdown table, the crash records, and a CSV download of the current selection.
+- **[Analysis](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/analysis)**, for working with the data. Filters (county, severity, years, road class, factor, road users) update everything at once and are kept in the URL, so a view can be shared. It shows the key figures, a map of every located crash, severity and factor charts, trends on four time axes, a day-by-hour grid, a breakdown table, the crash records, and a CSV download of the current selection.
 - **[District map](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/)**, a 3D view of the 17 counties where the crashes build up month by month from 2020 to 2026. Clicking a county opens its figures and a link to the Analysis page.
 
 <p align="center">
