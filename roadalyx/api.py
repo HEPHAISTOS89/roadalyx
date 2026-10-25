@@ -29,7 +29,6 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import FileResponse, JSONResponse, Response
-from fastapi.staticfiles import StaticFiles
 from mangum import Mangum
 
 from . import metrics, schemas
@@ -318,16 +317,21 @@ def api_not_found(rest: str):
 
 # Portal --------------------------------------------------------------------
 
-if (WEB_DIR / "index.html").exists():
-    app.mount("/assets", StaticFiles(directory=WEB_DIR / "assets"), name="assets")
-
-    @app.get("/{path:path}", include_in_schema=False)
-    def portal(path: str):
-        """Files from the built portal; any other path is a client-side route and gets index.html."""
-        file = (WEB_DIR / path).resolve()
-        if path and file.is_file() and file.is_relative_to(WEB_DIR.resolve()):
-            return FileResponse(file)
-        return FileResponse(WEB_DIR / "index.html", headers={"Cache-Control": "no-cache"})
+# Checked on every request, so a frontend built while the server runs is served without a restart.
+@app.get("/{path:path}", include_in_schema=False)
+def portal(path: str):
+    """Files from the built portal; any other path is a client-side route and gets index.html."""
+    index = WEB_DIR / "index.html"
+    if not index.is_file():
+        return JSONResponse({"detail": "The API is running, but the frontend is not built. Open /api/docs, "
+                                       "or build it with: npm --prefix web ci && npm --prefix web run build"},
+                            status_code=404)
+    file = (WEB_DIR / path).resolve()
+    if path and file.is_file() and file.is_relative_to(WEB_DIR.resolve()):
+        return FileResponse(file)
+    if path.startswith("assets/"):  # a missing build file, e.g. a chunk from the previous release
+        return JSONResponse({"detail": "Not found"}, status_code=404)
+    return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
 handler = Mangum(app, lifespan="off")

@@ -154,3 +154,18 @@ def test_totals_reconcile_across_endpoints(params):
     assert sum(map(sum, heat["crashes"])) + heat["unknown"] == total
     assert sum(g["crashes"] for g in get("/api/v1/breakdown", by="county", **params)["groups"]) == total
     assert get("/api/v1/crashes", **params)["total"] == total
+
+
+def test_portal_explains_a_missing_build_and_serves_one_built_later(tmp_path, monkeypatch):
+    import roadalyx.api as api
+    monkeypatch.setattr(api, "WEB_DIR", tmp_path)
+    r = client.get("/")
+    assert r.status_code == 404 and "npm --prefix web run build" in r.json()["detail"]
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "index.html").write_text("<p>portal</p>")
+    (tmp_path / "assets" / "app.js").write_text("console.log(1)")
+    assert client.get("/").text == "<p>portal</p>"
+    assert client.get("/explorer").text == "<p>portal</p>"          # client-side route
+    assert client.get("/assets/app.js").text == "console.log(1)"
+    assert client.get("/assets/gone.js").status_code == 404                # old chunk: no HTML in its place
+    assert client.get("/../roadalyx/api.py").text == "<p>portal</p>"  # never outside the build

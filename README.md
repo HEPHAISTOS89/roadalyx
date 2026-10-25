@@ -16,7 +16,7 @@
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.162-009688?style=flat-square&logo=fastapi&logoColor=white"></a>
   <a href="#deployment-on-aws"><img alt="AWS Lambda, Free Tier" src="https://img.shields.io/badge/AWS_Lambda-Free_Tier-FF9900?style=flat-square"></a>
   <a href="web/"><img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black"></a>
-  <a href="tests/"><img alt="Tests: 91 Python and 13 frontend, passing" src="https://img.shields.io/badge/tests-91_%2B_13_passing-2EA44F?style=flat-square"></a>
+  <a href="tests/"><img alt="Tests: 92 Python and 13 frontend, passing" src="https://img.shields.io/badge/tests-92_%2B_13_passing-2EA44F?style=flat-square"></a>
 </p>
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer">
@@ -51,24 +51,45 @@ I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The
 
 ## Run it locally
 
-You need Python 3.12 or newer (3.13 matches Lambda) and the supplied CSV. Node 22.12+ is only needed for the frontend.
+You need **Python 3.12 or 3.13** and the CSV supplied with the assessment. Node 22.12+ is needed only for the frontend. Setup takes about a minute.
 
 ```bash
-python3.13 -m venv .venv && source .venv/bin/activate
+git clone https://github.com/HEPHAISTOS89/roadalyx.git
+cd roadalyx
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-
-# 1. Put the supplied file at data/raw/district_crashes.csv, then clean it.
-#    Prints the three results and writes data/processed/crashes.json.gz
-python -m roadalyx data/raw/district_crashes.csv
-
-# 2. Serve the API, then open http://127.0.0.1:8000/api/docs
-uvicorn roadalyx.api:app --reload
-
-# 3. Run the tests
-python -m pytest
 ```
 
-The raw CSV and the processed file are not committed: the CSV is the lab's file and holds person-level records. If the file disagrees with its own header (crash or person counts) or a crash's rows conflict, the command stops and writes nothing.
+**1. Clean the data.** Copy the supplied file into `data/raw/`, then run the pipeline. It prints the three required results and writes `data/processed/crashes.json.gz`.
+
+```bash
+cp /path/to/district_crashes.csv data/raw/
+python -m roadalyx data/raw/district_crashes.csv
+```
+
+```
+24,261 crashes from 67,906 person rows, 2020-01-01 to 2026-10-20
+
+Crashes by severity (KABCO)
+  K  Fatal injury                   624    2.6%
+  ...
+Wrote 24,261 crash records to data/processed/crashes.json.gz (0.9 MB)
+```
+
+**2. Run the tests.**
+
+```bash
+python -m pytest                   # 92 tests, a few seconds
+```
+
+**3. Start the API**, then open <http://127.0.0.1:8000/api/docs> to try every endpoint in the browser. Stop it with Ctrl+C.
+
+```bash
+uvicorn roadalyx.api:app --reload
+```
+
+The raw CSV and the processed file are not committed: the CSV is the lab's file and holds person-level records. If the file disagrees with its own header (crash or person counts) or a crash's rows conflict, the pipeline stops and writes nothing.
 
 **Environment variables.** None are needed to run locally.
 
@@ -79,15 +100,22 @@ The raw CSV and the processed file are not committed: the CSV is the lab's file 
 | `AWS_REGION` | `us-east-2` | Region used by `scripts/deploy.sh` |
 
 <details>
-<summary>Re-run the EDA notebook, or run the frontend</summary>
+<summary><b>Also:</b> the frontend and the EDA notebook</summary>
+
+To see the frontend on your machine, build it once while the API is running; then open <http://127.0.0.1:8000/>.
+
+```bash
+npm --prefix web ci
+npm --prefix web run build         # writes roadalyx/web, served by the API at /
+npm --prefix web test              # 13 tests
+```
+
+To change the frontend with live reload, keep the API running and start `npm --prefix web run dev` in a second terminal, then open <http://localhost:5173>.
+
+To re-run the notebook from scratch (it is already saved with its outputs):
 
 ```bash
 python -m nbconvert --to notebook --execute --inplace notebooks/eda.ipynb
-
-npm --prefix web ci
-npm --prefix web run dev      # http://localhost:5173, forwards /api to port 8000
-npm --prefix web test
-npm --prefix web run build    # writes roadalyx/web, which uvicorn then serves at /
 ```
 </details>
 
