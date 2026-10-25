@@ -17,7 +17,7 @@ import { useTheme, type Theme } from '../../lib/theme';
 const DISTRICT: [[number, number], [number, number]] = [[-103.07, 32.52], [-101.04, 34.75]];
 const SEV_NAME: Record<string, string> = { K: 'Fatal', A: 'Suspected serious injury', B: 'Suspected minor injury', C: 'Possible injury' };
 type Mode = 'crashes' | 'hotspots';
-// Crash points per mode: in Hotspots they come in only when zoomed in past the density surface.
+// Crash points per mode: in Density they come in only when zoomed in past the density surface.
 const POINT_OPACITY = {
   crashes: ['match', ['get', 's'], 'C', 0.75, 'B', 0.85, 0.95],
   hotspots: ['interpolate', ['linear'], ['zoom'], 10.5, 0, 12, ['match', ['get', 's'], 'C', 0.75, 'B', 0.85, 0.95]],
@@ -315,7 +315,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
           id: 'crash-selected', type: 'circle', source: 'crashes', filter: ['==', ['get', 'id'], -1],
           paint: { 'circle-radius': 11, 'circle-color': 'transparent', 'circle-stroke-color': P.ring, 'circle-stroke-width': 2 },
         });
-        // In Hotspots the points under the density surface are invisible: they must not answer the pointer.
+        // In Density the points under the density surface are invisible: they must not answer the pointer.
         const hidden = () => modeRef.current === 'hotspots' && m!.getZoom() < 11.5;
         m!.on('click', 'crash', (e: MapLayerMouseEvent) => { if (hidden()) return; const id = e.features?.[0]?.properties?.id; if (id != null) select.current(Number(id)); });
         // Hover card: what an analyst checks before opening the record.
@@ -522,7 +522,7 @@ export default function CrashMap({ points, selected, onSelect, corridors: ranked
         <Seg role="group" aria-label="Map view">
           <button type="button" aria-pressed={mode === 'crashes'} onClick={() => setMode('crashes')}><CarProfileIcon weight="bold" aria-hidden="true" />Crashes</button>
           <button type="button" aria-pressed={mode === 'hotspots'} onClick={() => setMode('hotspots')}
-            title="Crash density of the current selection; single crashes appear as you zoom in"><FireIcon weight="bold" aria-hidden="true" />Hotspots</button>
+            title="Crash density of the current selection; single crashes appear as you zoom in"><FireIcon weight="bold" aria-hidden="true" />Density</button>
         </Seg>
         <button type="button" aria-pressed={tilted} onClick={() => setTilted(!tilted)}
           title="Tilt the map to see buildings in 3D; right-drag also tilts and turns it"><CubeIcon weight="bold" aria-hidden="true" />3D</button>
