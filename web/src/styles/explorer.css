@@ -254,7 +254,23 @@ table.data tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparen
 .corridors .ka { height: 4px; border-radius: 2px; background: var(--rule-2); overflow: hidden; }
 .corridors .ka i { display: block; height: 100%; background: var(--sev-k); }
 .corridors-note { margin: 6px 6px 2px; padding-top: 7px; border-top: 1px solid var(--rule); font-size: var(--t-micro); line-height: 1.45; color: var(--ink-3); }
-.seg.location button { padding: 5px 11px; font-size: var(--t-label); }
+.location { display: flex; align-items: center; gap: 10px; margin: 0; padding: 0; border: 0; }
+.location legend { float: left; font-size: var(--t-label); color: var(--ink-3); }
+.location .seg button { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 11px; font-size: var(--t-label); }
+.location .seg button .num { font-size: var(--t-micro); color: var(--ink-3); }
+.location .seg button[aria-pressed='true'] .num { color: var(--ink-2); }
+.loc-help { flex-basis: 100%; margin: 2px 0 0; font-size: var(--t-micro); color: var(--ink-3); }
+.loc-help b { font-weight: 560; color: var(--ink-2); }
+@media (max-width: 700px) {
+  /* Four equal buttons, count under the label, so the group fits a phone width. */
+  .location { flex-basis: 100%; flex-wrap: wrap; min-width: 0; }
+  .location .seg { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; }
+  .location .seg button { flex-direction: column; align-items: center; gap: 0; height: auto; min-height: 44px; padding: 5px 4px; min-width: 0; }
+  /* Map toolbar wraps beside the zoom buttons; the legend sits above the attribution line. */
+  .map-modes { right: 54px; flex-wrap: wrap; }
+  .map-legend { bottom: 30px; }
+  .corridors { top: 96px; }
+}
 .corridors .ka-v { font-size: var(--t-micro); color: var(--ink-3); text-align: right; }
 .map-modes > div { display: inline-flex; padding: 3px; border-radius: var(--r-m); background: rgba(14, 15, 14, 0.9); border: 1px solid var(--rule-2); }
 .map-modes button { border: 0; background: none; padding: 6px 12px; border-radius: calc(var(--r-m) - 2px); color: var(--ink-2); font-size: var(--t-label); cursor: pointer; }

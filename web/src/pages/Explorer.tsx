@@ -18,6 +18,10 @@ const AXES = [
 ] as const;
 const PLACE: Record<Location, string> = { intersection: 'at intersections', segment: 'on segments', driveway: 'at driveways' };
 const PLACE_LABEL: Record<Location, string> = { intersection: 'Intersection', segment: 'Segment', driveway: 'Driveway' };
+// CRIS "Intersection Related" values behind each location (same grouping as roadalyx.query.LOCATIONS).
+const PLACE_VALUES: Record<Location, string[]> = {
+  intersection: ['INTERSECTION', 'INTERSECTION RELATED'], segment: ['NON INTERSECTION'], driveway: ['DRIVEWAY ACCESS'],
+};
 
 /** One sentence stating the selection every number on the page is computed on. */
 function Scope({ meta, total, located }: { meta: Meta; total: number | null; located: number | null }) {
@@ -60,6 +64,11 @@ export default function Explorer() {
   const heat = useApi<HeatmapRes>(api('/heatmap', query));
   // Corridors are ranked on the selection without the street filter, so the list stays to choose from.
   const corridors = useApi<BreakdownRes>(api('/breakdown', toQuery({ ...filters, street: [] }), 'by=street&limit=9'));
+  // Crashes per location on the selection without the location filter, shown on each button.
+  const places = useApi<BreakdownRes>(api('/breakdown', toQuery({ ...filters, location: null }), 'by=intersection'));
+  const placeCount = (l: Location | null) => places.data?.groups
+    .filter((g) => (l ? PLACE_VALUES[l] : Object.values(PLACE_VALUES).flat()).includes(String(g.value)))
+    .reduce((n, g) => n + g.crashes, 0);
 
   const selected = params.get('crash') ? Number(params.get('crash')) : null;
   const select = useCallback((id: number | null) => setParams((p) => {
@@ -109,17 +118,24 @@ export default function Explorer() {
           <section className="panel map-panel" aria-labelledby="map-h">
             <div className="panel-head">
               <h2 id="map-h">Map</h2>
-              <fieldset className="seg location" aria-label="Crash location">
-                <legend className="sr-only">Crash location (CRIS Intersection Related)</legend>
-                <button type="button" aria-pressed={!filters.location} onClick={() => set({ location: null })}>All</button>
-                {LOCATIONS.map((l) => (
-                  <button key={l} type="button" aria-pressed={filters.location === l}
-                    onClick={() => set({ location: filters.location === l ? null : l })}
-                    title={l === 'intersection' ? 'At an intersection or intersection-related' : l === 'segment' ? 'Away from intersections (CRIS: non intersection)' : 'At a driveway access'}>
-                    {PLACE_LABEL[l]}
+              <fieldset className="location" aria-describedby="loc-help">
+                <legend>Location</legend>
+                <div className="seg">
+                  <button type="button" aria-pressed={!filters.location} onClick={() => set({ location: null })}>
+                    All<span className="num">{int(placeCount(null))}</span>
                   </button>
-                ))}
+                  {LOCATIONS.map((l) => (
+                    <button key={l} type="button" aria-pressed={filters.location === l}
+                      onClick={() => set({ location: filters.location === l ? null : l })}>
+                      {PLACE_LABEL[l]}<span className="num">{int(placeCount(l))}</span>
+                    </button>
+                  ))}
+                </div>
               </fieldset>
+              <p id="loc-help" className="loc-help">
+                From the CRIS crash report, and applied to the whole page: <b>intersection</b> at or near a junction,
+                {' '}<b>segment</b> between junctions, <b>driveway</b> at a private access.
+              </p>
             </div>
             <div className="map-wrap" aria-busy={pts.loading}>
               {pts.loading && <p className="map-loading" role="status">Updating map…</p>}
