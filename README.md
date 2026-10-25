@@ -29,7 +29,7 @@
   </a>
 </p>
 
-I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The supplied CRIS export lists **67,906 people involved in 24,261 injury crashes** in the 17 counties of the TxDOT Lubbock District, from 1 January 2020 to 20 October 2026. A Python pipeline turns it into one clean record per crash, a FastAPI service answers questions about it, and both run on AWS within the Free Tier.
+Roadalyx turns raw TxDOT crash records into something you can actually explore. The CRIS export covers **67,906 people involved in 24,261 injury crashes** across the 17 counties of the Lubbock District, from January 2020 to October 2026. A Python pipeline cleans it into one record per crash, a FastAPI service answers questions about it, and a live map shows where and when crashes happen.
 
 ## <img src="docs/assets/icons/contents.svg" width="26" height="26" align="top" alt=""> Contents
 
