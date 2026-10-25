@@ -339,8 +339,6 @@ I use one filter implementation for the aggregate and search endpoints, one Lamb
 - The export only has injury crashes (K, A, B, C), so the totals are not all crashes.
 - Without traffic volumes, I can say where crashes happen and how severe they are, but not which road is the most dangerous. With TxDOT's traffic counts (AADT), I would compute crash rates per road segment.
 - The last months may still grow: the data ends on 20 October 2026 and crash reports keep arriving.
-- Anyone can call the public URL as often as they like. Before sharing it widely, I would put API Gateway with a usage limit in front of it.
-- New exports are processed manually before deployment. Next, I would have S3 start the processing when a file is uploaded.
 
 ## The frontend
 
@@ -377,4 +375,4 @@ data/raw/            put district_crashes.csv here (not committed)
 
 ---
 
-<sub>Data: TxDOT Crash Records Information System (CRIS), query export supplied by TransTech Lab; TxDOT makes no warranty as to the accuracy of CRIS data. County boundaries: US Census Bureau, via `us-atlas`. District map roads, water and town limits: US Census Bureau TIGER/Line 2024, built with `scripts/build_roads.py`. Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors. Developed with the help of an AI coding assistant (Claude Code).</sub>
+<sub>Data: TxDOT Crash Records Information System (CRIS), query export supplied by TransTech Lab; TxDOT makes no warranty as to the accuracy of CRIS data. County boundaries: US Census Bureau, via `us-atlas`. District map roads, water and town limits: US Census Bureau TIGER/Line 2024, built with `scripts/build_roads.py`. Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors.</sub>
