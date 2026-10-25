@@ -20,7 +20,7 @@
   <text x="68" y="112" class="name">CSV export</text>
   <text x="68" y="140" class="mono">district_crashes.csv</text>
   <path d="M296 120 H376" class="edge"/>
-  <rect x="384" y="80" width="440" height="80" rx="8" fill="#edf3e7" stroke="#c8d6bd"/>
+  <rect x="384" y="80" width="440" height="80" rx="8" fill="#eaf2ff" stroke="#9ebce8"/>
   <text x="408" y="112" class="name">Python cleaning</text>
   <text x="408" y="140" class="detail">Validate, group by Crash ID, write JSON</text>
 
@@ -28,7 +28,7 @@
   <text x="280" y="278" class="label">AWS / us-east-2</text>
   <path d="M604 160 V232 H682 V298" class="edge"/>
   <text x="462" y="226" class="detail">upload</text>
-  <rect x="532" y="298" width="300" height="92" rx="8" fill="#fff" stroke="#c8d6bd"/>
+  <rect x="532" y="298" width="300" height="92" rx="8" fill="#fff4db" stroke="#d7b66c"/>
   <text x="556" y="335" class="name">Private S3</text>
   <text x="556" y="366" class="mono">crashes.json.gz</text>
   <g fill="none" stroke="#65795b" stroke-width="1.8">
@@ -41,7 +41,7 @@
   <rect x="24" y="470" width="184" height="110" rx="8" fill="#fff" stroke="#d8dfd2"/>
   <text x="44" y="511" class="name">Analyst</text>
   <text x="44" y="544" class="detail">Browser / API</text>
-  <rect x="280" y="470" width="184" height="110" rx="8" fill="#fff" stroke="#c8d6bd"/>
+  <rect x="280" y="470" width="184" height="110" rx="8" fill="#eaf2ff" stroke="#9ebce8"/>
   <text x="300" y="511" class="name">HTTPS URL</text>
   <text x="300" y="544" class="detail">Function URL</text>
   <path d="M216 525 H272" class="edge" marker-start="url(#arrow)"/>
@@ -53,7 +53,7 @@
   <text x="556" y="573" style="fill:#d1ddc7;font-size:16px">Filter and return JSON / CSV</text>
   <path d="M682 606 V652" class="edge"/>
   <text x="700" y="636" class="detail">logs</text>
-  <rect x="532" y="660" width="300" height="76" rx="8" fill="#fff" stroke="#c8d6bd"/>
+  <rect x="532" y="660" width="300" height="76" rx="8" fill="#f0eafa" stroke="#b8a1d3"/>
   <text x="556" y="691" style="font-size:23px;font-weight:650">CloudWatch Logs</text>
   <text x="556" y="719" style="font-size:16px;fill:#53604e">Request status and duration</text>
   <text x="280" y="666" class="label">ACCESS</text>
@@ -61,7 +61,9 @@
   <text x="280" y="726" style="font-size:16px;fill:#53604e">IAM: data read + log writes</text>
 
   <g class="flow" aria-hidden="true">
-    <circle r="4" fill="#65795b"><animateMotion dur="7s" repeatCount="indefinite" path="M604 160 V232 H682 V298"/></circle>
-    <circle r="4" fill="#65795b"><animateMotion dur="7s" begin="1.5s" repeatCount="indefinite" path="M682 398 V462"/></circle>
+    <circle r="4" fill="#376eb3"><animateMotion dur="7s" repeatCount="indefinite" path="M604 160 V232 H682 V298"/></circle>
+    <circle r="4" fill="#b3852a"><animateMotion dur="7s" begin="1.5s" repeatCount="indefinite" path="M682 398 V462"/></circle>
+    <circle r="3" fill="#376eb3"><animateMotion dur="5s" repeatCount="indefinite" path="M216 525 H272 M472 525 H524"/></circle>
+    <circle r="3" fill="#8762ab"><animateMotion dur="6s" repeatCount="indefinite" path="M682 606 V652"/></circle>
   </g>
 </svg>

@@ -117,45 +117,71 @@ curl --get --compressed --output selection.csv \
 
 ## AWS deployment
 
-I kept the app to one Lambda function and one private S3 bucket. The 24,261-crash table fits in memory, so I did not need a database or an always-on server.
+I deploy the API and frontend together in **one Lambda function**, with the processed dataset in **one private S3 bucket**, in `us-east-2`. The public [application URL](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/) serves both the portal and the API.
 
-I clean the CSV locally and upload `crashes.json.gz` to S3. The first request that needs crash data loads it into the Lambda instance; later requests in that instance reuse it.
+### Why this architecture
+
+The dataset has 24,261 crashes and fits in memory. I use Python to clean it before deployment, rather than repeating that work for every request. Lambda then loads the cleaned data and answers queries without a database or an always-on server. This keeps the deployment small enough for the assessment.
 
 ![Architecture: local Python cleaning uploads processed data to private S3. An analyst reaches Lambda through its HTTPS Function URL. Lambda reads the data and writes CloudWatch logs.](docs/assets/architecture.svg)
 
 [View the architecture at full size](docs/assets/architecture.svg)
 
-| Service | Why I use it |
+| Service | What it does and why I chose it |
 |---|---|
-| Lambda | Run on demand and filter the small crash table in memory |
-| Function URL | Serve the API and frontend at one HTTPS address without API Gateway |
-| S3 | Keep the dataset separate from the code, with private storage for both data and deployment packages |
-| IAM | Limit the function to reading its data object and writing its own logs |
-| CloudWatch Logs | Inspect request status and duration; expire logs after 14 days |
-| CloudFormation | Recreate the function, role, URL and log configuration from a reviewable template |
+| **Lambda** | Runs FastAPI and serves the built React files. It starts on demand; I do not maintain a server. I use Python 3.13 on arm64, with 1,024 MB of memory and a 10-second timeout. |
+| **Function URL** | Gives Lambda a public HTTPS address. For this read-only app, I do not need API Gateway or a separate frontend host. |
+| **S3** | Stores `data/crashes.json.gz` and the deployment ZIPs privately. Keeping data separate lets me replace the dataset without rebuilding the frontend. |
+| **IAM** | Gives the function permission to read only its dataset object and write its own logs. Deployment uses my authenticated AWS CLI session, not credentials in the repository. |
+| **CloudWatch Logs** | Records request paths, status codes and durations so I can investigate errors. Logs expire after 14 days. |
+| **CloudFormation** | Defines the function, runtime permissions, public URL and log group in [template.yaml](infra/template.yaml). The deployment script creates and secures the S3 bucket separately. |
 
-When a request reaches the function URL, Mangum passes it to FastAPI. FastAPI validates the filters, selects the matching crashes and returns JSON or CSV. The same function serves the frontend files, so the portal and API share one address.
+### From CSV to a deployed application
 
-I chose services with Free Tier allowances. Request volume, storage and logs still need to stay within the account's allowances to avoid charges.
+I first complete [Run locally](#run-locally), including processing the supplied CSV. The deployment script **uploads the processed file; it does not clean the CSV itself**.
 
-### Deploy or update the data
-
-Deployment needs Node 22.12+, npm, AWS CLI, `zip`, `rsync` and the project virtual environment. Authenticate the AWS CLI before running the script. I use that session for deployment and an IAM role at runtime; no credentials are stored in the code.
+Deployment also needs Node 22.12+, npm, AWS CLI, `zip`, `rsync` and `curl`. After authenticating the AWS CLI to the intended account, I run this from the repository root:
 
 ```bash
+aws sts get-caller-identity
 scripts/deploy.sh
 ```
 
-The script runs the Python tests, builds the frontend, packages Lambda's Linux dependencies, uploads the code and data to S3, and updates CloudFormation. It prints the public URL and checks `/api/health` at the end.
+The first command lets me check the deployment account. The script defaults to `us-east-2`; I can set `AWS_REGION` to use another region.
 
-After processing a replacement CSV, I can update only the dataset:
+[deploy.sh](scripts/deploy.sh) performs these steps:
+
+1. **Check and build.** Run the Python tests, install the frontend dependencies and build the React files into `roadalyx/web`.
+2. **Package the app.** Bundle the API, frontend and Python 3.13 Linux arm64 dependencies into a Lambda ZIP. CSV cleaning stays local, so pandas is not included in Lambda.
+3. **Prepare storage.** Create the account-specific S3 bucket if needed. Block public access, enable encryption and require HTTPS. Upload the code ZIP and `data/processed/crashes.json.gz`.
+4. **Apply the infrastructure.** Create or update the CloudFormation stack. Set `ROADALYX_DATA` to the private S3 object and attach the runtime IAM role.
+5. **Check the endpoint.** Request `/api/health` and print the public URL. This checks that the app responds and can load the dataset; it is not a substitute for checking metric results and the portal.
+
+### What happens when an analyst opens Explorer
+
+1. The browser requests the public Function URL. Lambda serves the frontend files from its package.
+2. Explorer calls the API at that same address. Mangum translates the Lambda HTTP event for FastAPI.
+3. On the first request that needs crash data, that Lambda instance reads `crashes.json.gz` from private S3 and decompresses it into memory. Later requests in the same instance reuse it. A new instance loads its own copy.
+4. FastAPI validates the filters, selects the matching crashes and returns JSON for the charts or CSV for a download. Each request also writes its status and duration to CloudWatch.
+
+The browser does not read S3 directly. The API is public and read-only; the bucket is private.
+
+### Updating only the dataset
+
+After receiving a replacement export, I process it locally and then run:
 
 ```bash
 python -m roadalyx data/raw/district_crashes.csv
 scripts/deploy.sh data
 ```
 
-This also updates the function configuration so new Lambda instances load the replacement data.
+This runs the Python tests, uploads the processed dataset and updates its version in the function configuration. New Lambda instances load the replacement data. It does not rebuild or upload the frontend.
+
+### Cost boundaries
+
+I chose services with Free Tier allowances and avoided a database, API Gateway and an always-on server. In-memory reuse reduces S3 reads, and the script keeps only the current and previous code packages. Logs have a 14-day retention limit.
+
+These choices limit usage, but **do not guarantee a zero bill**. Requests, execution time, storage and logs must remain within the account's available allowances or credits. The public URL has no application-level rate limiting. I would check account eligibility and billing before leaving it publicly available for longer or sharing it more widely.
 
 ## Limits and next steps
 
@@ -167,9 +193,14 @@ This also updates the function configuration so new Lambda instances load the re
 
 Given more time, I would add request throttling and a validated data-refresh workflow.
 
-## Frontend (bonus)
+## Frontend
 
-I built a React frontend in [web](web/) on top of the same API. In Explorer, an analyst can filter the data, inspect severity and time charts, expand the map, open individual crash records and download the selection. The filters stay in the URL so a view can be bookmarked or shared.
+For the optional frontend, I built a React portal in [web](web/) on top of the required API. I added:
+
+- **A linked Explorer view.** County, severity, year, road class, contributing factor and pedestrian/cyclist filters update the map and charts together. The URL keeps the selection for sharing.
+- **More ways to compare crashes.** Severity and factor charts, four time axes, a day/hour heatmap, and breakdowns by county, road class, rural/urban setting, intersection, collision type, first harmful event, weather or speed limit. The factor chart shows ten factors; the required top five remain available through the API.
+- **A way to inspect the underlying records.** A full-screen map, sortable and paginated records, individual crash details and a CSV download of the filtered selection. Unmapped crashes stay in the statistics and records.
+- **Supporting API queries.** Metadata, map points, breakdowns, the day/hour grid and crash records let the frontend use the same cleaned data and filters as the three required metric endpoints.
 
 [![Explorer showing the county and severity filters, crash totals, map and severity chart.](docs/assets/explorer.jpg)](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer)
 
