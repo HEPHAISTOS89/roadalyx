@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Map as MlMap, NavigationControl, FullscreenControl, setWorkerUrl, type GeoJSONSource, type MapLayerMouseEvent, type StyleSpecification } from 'maplibre-gl';
+import { Map as MlMap, NavigationControl, FullscreenControl, Popup, setWorkerUrl, type GeoJSONSource, type MapLayerMouseEvent, type StyleSpecification } from 'maplibre-gl';
 // MapLibre 6 runs tile parsing in a module worker; let Vite bundle it so the production build ships it.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -11,6 +11,16 @@ import type { Points } from '../../lib/types';
 
 const DISTRICT: [[number, number], [number, number]] = [[-103.07, 32.52], [-101.04, 34.75]];
 const SEV_COLOR = ['match', ['get', 's'], 'K', '#d31246', 'A', '#f27000', 'B', '#e7b63b', '#d0d8e1'];
+const SEV_NAME: Record<string, string> = { K: 'Fatal', A: 'Suspected serious injury', B: 'Suspected minor injury', C: 'Possible injury' };
+// Crash density: one cool hue from dark to light, so it never reads as a severity colour.
+const DENSITY = ['interpolate', ['linear'], ['heatmap-density'],
+  0, 'rgba(30, 70, 80, 0)', 0.2, 'rgba(34, 96, 108, 0.45)', 0.5, 'rgba(47, 138, 148, 0.8)', 0.8, '#6cc4c2', 1, '#e2f7f1'];
+type Mode = 'crashes' | 'hotspots';
+// Crash points per mode: in Hotspots they come in only when zoomed in past the density surface.
+const POINT_OPACITY = {
+  crashes: ['match', ['get', 's'], 'C', 0.75, 'B', 0.85, 0.95],
+  hotspots: ['interpolate', ['linear'], ['zoom'], 10.5, 0, 12, ['match', ['get', 's'], 'C', 0.75, 'B', 0.85, 0.95]],
+};
 
 const ROAD_COLOR: Record<string, string> = {
   highway_minor: '#262c29', highway_path: '#1d2220',
@@ -70,6 +80,10 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
   const map = useRef<MlMap | null>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(() => !supportsWebGL2());
+  const [mode, setMode] = useState<Mode>('crashes');
+  const [tilted, setTilted] = useState(false);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   const select = useRef(onSelect);
   select.current = onSelect;
 
@@ -93,11 +107,12 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
       if (!live || !el.current) return;
       m = new MlMap({
         container: el.current, style: s, bounds: DISTRICT, fitBoundsOptions: { padding: 24 },
-        attributionControl: { compact: true }, cooperativeGestures: false, maxPitch: 0, dragRotate: false,
+        attributionControl: { compact: true }, cooperativeGestures: false, maxPitch: 65,
       });
       m.getCanvas().addEventListener('webglcontextlost', lost);
       m.on('error', () => { if (!loaded) fail(); });
-      m.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+      // Right-drag (or ctrl-drag) tilts and turns the map; the compass resets north and pitch.
+      m.addControl(new NavigationControl({ visualizePitch: true }), 'top-right');
       // Expand inside the portal, including browsers that block native fullscreen.
       m.addControl(new FullscreenControl({ pseudo: true }), 'top-right');
       m.on('load', () => {
@@ -117,7 +132,26 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
               12, ['match', ['get', 'class'], 'motorway', 3.2, 'trunk', 2.4, 1.6]] as never,
           },
         });
+        // Building footprints rise in 3D from street level (OpenMapTiles render_height).
+        m!.addLayer({
+          id: 'building-3d', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 14,
+          paint: {
+            'fill-extrusion-color': '#252b29',
+            'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 15, ['coalesce', ['get', 'render_height'], 5]] as never,
+            'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0] as never,
+            'fill-extrusion-opacity': 0.85,
+          },
+        });
         m!.addSource('crashes', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        m!.addLayer({
+          id: 'density', type: 'heatmap', source: 'crashes', maxzoom: 13, layout: { visibility: 'none' },
+          paint: {
+            'heatmap-color': DENSITY as never,
+            'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 6, 4, 9, 9, 12, 18] as never,
+            'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 6, 0.35, 12, 1.1] as never,
+            'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0.85, 13, 0] as never,
+          },
+        });
         m!.addLayer({
           id: 'crash', type: 'circle', source: 'crashes',
           layout: { 'circle-sort-key': ['match', ['get', 's'], 'K', 4, 'A', 3, 'B', 2, 1] },
@@ -128,7 +162,7 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
               7, ['match', ['get', 's'], 'K', 2, 'A', 1.7, 'B', 1.4, 1.3],
               10, ['match', ['get', 's'], 'K', 3.2, 'A', 2.8, 'B', 2.4, 2.2],
               13, ['match', ['get', 's'], 'K', 7, 'A', 6, 'B', 5, 4.5]] as never,
-            'circle-opacity': ['match', ['get', 's'], 'C', 0.75, 'B', 0.85, 0.95] as never,
+            'circle-opacity': POINT_OPACITY.crashes as never,
             'circle-stroke-color': '#0e0f0e',
             'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 9, 0, 12, 1] as never,
           },
@@ -150,9 +184,28 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
           id: 'crash-selected', type: 'circle', source: 'crashes', filter: ['==', ['get', 'id'], -1],
           paint: { 'circle-radius': 11, 'circle-color': 'transparent', 'circle-stroke-color': '#eef0ec', 'circle-stroke-width': 2 },
         });
-        m!.on('click', 'crash', (e: MapLayerMouseEvent) => { const id = e.features?.[0]?.properties?.id; if (id != null) select.current(Number(id)); });
-        m!.on('mouseenter', 'crash', () => { m!.getCanvas().style.cursor = 'pointer'; });
-        m!.on('mouseleave', 'crash', () => { m!.getCanvas().style.cursor = ''; });
+        // In Hotspots the points under the density surface are invisible: they must not answer the pointer.
+        const hidden = () => modeRef.current === 'hotspots' && m!.getZoom() < 11.5;
+        m!.on('click', 'crash', (e: MapLayerMouseEvent) => { if (hidden()) return; const id = e.features?.[0]?.properties?.id; if (id != null) select.current(Number(id)); });
+        // Hover card: what an analyst checks before opening the record.
+        const card = new Popup({ closeButton: false, closeOnClick: false, offset: 10, className: 'crash-hover' });
+        m!.on('mousemove', 'crash', (e: MapLayerMouseEvent) => {
+          const f = e.features?.[0];
+          if (!f || hidden()) return;
+          m!.getCanvas().style.cursor = 'pointer';
+          const { s: sev, d } = f.properties as { s: string; d: number };
+          const date = new Date(new Date(`${start.current}T12:00:00`).getTime() + d * 864e5)
+            .toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+          const el = document.createElement('div');
+          const head = document.createElement('b');
+          head.className = `sev-${sev.toLowerCase()}`;
+          head.textContent = `${sev} · ${SEV_NAME[sev]}`;
+          const sub = document.createElement('span');
+          sub.textContent = `${date} · click to open the record`;
+          el.append(head, sub);
+          card.setLngLat(e.lngLat).setDOMContent(el).addTo(m!);
+        });
+        m!.on('mouseleave', 'crash', () => { m!.getCanvas().style.cursor = ''; card.remove(); });
         map.current = m;
         loaded = true;
         window.clearTimeout(deadline);
@@ -172,14 +225,28 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
     };
   }, [failed]);
 
+  const start = useRef('2020-01-01');
+  useEffect(() => {
+    const m = map.current;
+    if (!ready || !m) return;
+    m.setLayoutProperty('density', 'visibility', mode === 'hotspots' ? 'visible' : 'none');
+    m.setPaintProperty('crash', 'circle-opacity', POINT_OPACITY[mode] as never);
+  }, [ready, mode]);
+  useEffect(() => {
+    const m = map.current;
+    if (!ready || !m) return;
+    m.easeTo({ pitch: tilted ? 55 : 0, bearing: tilted ? -17 : 0, duration: reduced() ? 0 : 900 });
+  }, [ready, tilted]);
+
   useEffect(() => {
     if (!ready || !map.current) return;
     if (!points) {
       (map.current.getSource('crashes') as GeoJSONSource).setData({ type: 'FeatureCollection', features: [] });
       return;
     }
+    start.current = points.start;
     const features = points.id.map((id, i) => ({
-      type: 'Feature' as const, properties: { id, s: points.severity[i] },
+      type: 'Feature' as const, properties: { id, s: points.severity[i], d: points.day[i] },
       geometry: { type: 'Point' as const, coordinates: [points.lon[i], points.lat[i]] },
     }));
     (map.current.getSource('crashes') as GeoJSONSource).setData({ type: 'FeatureCollection', features });
@@ -205,9 +272,20 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
   return (
     <div className="map" ref={el} role="region" aria-label="Crash map. Click a crash mark to open its record; the records table below lists the same crashes.">
       <ul className="map-legend" aria-label="Map legend">
-        <li><i className="sw k" />K fatal</li><li><i className="sw a" />A suspected serious</li><li><i className="sw b" />B suspected minor</li><li><i className="sw c" />C possible</li>
+        {mode === 'hotspots'
+          ? <li className="density-key">Crash density<span>fewer</span><i aria-hidden="true" /><span>more</span><span className="muted">· zoom in for single crashes</span></li>
+          : <><li><i className="sw k" />K fatal</li><li><i className="sw a" />A suspected serious</li><li><i className="sw b" />B suspected minor</li><li><i className="sw c" />C possible</li></>}
         <li><i className="sw-route" aria-hidden="true" />Interstate, US and state highways</li>
       </ul>
+      <div className="map-modes">
+        <div role="group" aria-label="Map view">
+          <button type="button" aria-pressed={mode === 'crashes'} onClick={() => setMode('crashes')}>Crashes</button>
+          <button type="button" aria-pressed={mode === 'hotspots'} onClick={() => setMode('hotspots')}
+            title="Crash density of the current selection; individual crashes appear as you zoom in">Hotspots</button>
+        </div>
+        <button type="button" aria-pressed={tilted} onClick={() => setTilted(!tilted)}
+          title="Tilt the map to see buildings in 3D; right-drag also tilts and turns it">3D</button>
+      </div>
     </div>
   );
 }

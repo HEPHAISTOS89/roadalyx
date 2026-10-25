@@ -214,6 +214,24 @@ table.data tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparen
 .chart-data summary { cursor: pointer; width: fit-content; padding-block: 8px; }
 .chart-data .table-wrap { margin-top: 6px; }
 .chart [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Map view controls, bottom left, and the hover card. */
+.map-modes { position: absolute; z-index: 2; left: 10px; bottom: 30px; display: flex; gap: 6px; }
+.map-modes > div { display: inline-flex; padding: 3px; border-radius: var(--r-m); background: rgba(14, 15, 14, 0.9); border: 1px solid var(--rule-2); }
+.map-modes button { border: 0; background: none; padding: 6px 12px; border-radius: calc(var(--r-m) - 2px); color: var(--ink-2); font-size: var(--t-label); cursor: pointer; }
+.map-modes > button { background: rgba(14, 15, 14, 0.9); border: 1px solid var(--rule-2); border-radius: var(--r-m); font-family: var(--f-mono); font-weight: 600; }
+.map-modes button[aria-pressed='true'] { background: var(--raise); color: var(--ink); }
+.map-modes button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.density-key { display: flex; align-items: center; gap: 6px; }
+.density-key i { width: 56px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, rgba(34, 96, 108, 0.55), #2f8a94, #6cc4c2, #e2f7f1); }
+.crash-hover .maplibregl-popup-content {
+  display: grid; gap: 2px; padding: 8px 10px; border-radius: var(--r-m); background: rgba(18, 20, 18, 0.96);
+  border: 1px solid var(--rule-2); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45); color: var(--ink-2); font: 500 12px/1.4 var(--f-ui);
+}
+.crash-hover .maplibregl-popup-tip { display: none; }
+.crash-hover b { color: var(--ink); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.crash-hover b::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--sev-c); }
+.crash-hover b.sev-k::before { background: var(--sev-k); } .crash-hover b.sev-a::before { background: var(--sev-a); } .crash-hover b.sev-b::before { background: var(--sev-b); }
+
 .map-loading { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; background: var(--ground-2); color: var(--ink-2); font-size: var(--t-label); }
 @media (max-width: 700px) {
   .filters .seg button, .years select, .filters-main .btn, .picker-btn { min-height: 44px; }
