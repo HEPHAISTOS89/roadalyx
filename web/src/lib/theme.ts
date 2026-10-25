@@ -2,15 +2,15 @@ import { useSyncExternalStore } from 'react';
 
 export type Theme = 'light' | 'dark';
 
-/** The theme lives on <html data-theme>; public/theme.js sets it before the first paint (saved choice, else the system's). */
-const read = (): Theme => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+/** The theme lives on <html data-theme>; public/theme.js sets it before the first paint (saved choice, else light). */
+const read = (): Theme => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
 const subscribe = (cb: () => void) => {
   const mo = new MutationObserver(cb);
   mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   return () => mo.disconnect();
 };
 
-export const useTheme = () => useSyncExternalStore(subscribe, read, () => 'dark' as Theme);
+export const useTheme = () => useSyncExternalStore(subscribe, read, () => 'light' as Theme);
 
 export function setTheme(t: Theme) {
   const apply = () => {
