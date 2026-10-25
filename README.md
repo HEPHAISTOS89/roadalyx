@@ -35,7 +35,7 @@ I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The
 5. [Deployment on AWS](#deployment-on-aws)
 6. [Scope decisions](#scope-decisions)
 7. [Limitations and next steps](#limitations-and-next-steps)
-8. [Bonus: the frontend](#bonus-the-frontend)
+8. [The frontend](#the-frontend)
 
 ## The assessment, part by part
 
@@ -47,7 +47,7 @@ I built Roadalyx for the TransTech Lab Graduate Assistant coding assessment. The
 | **Deployment**: AWS Free Tier, public URL, no credentials in code | [Live URL](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/) · [`infra/template.yaml`](infra/template.yaml), [`scripts/deploy.sh`](scripts/deploy.sh) |
 | **README and dependencies** | This file · [`requirements.txt`](requirements.txt) (local), [`requirements-lambda.txt`](requirements-lambda.txt) (Lambda) |
 | **Tests** | [`tests/`](tests/): cleaning rules, API filters and errors, totals that must match across endpoints |
-| **Bonus**: a frontend for a traffic safety analyst | [`web/`](web/) · [Analysis page](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer) |
+| **Frontend** for a traffic safety analyst | [`web/`](web/) · [Analysis page](https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/explorer) |
 
 ## Run it locally
 
@@ -280,7 +280,7 @@ The assessment is meant to take a few hours, so I spent the effort where a wrong
 1. **Correct numbers first.** Counting crashes rather than people, the factor separators and the partial year change the required results. I check each against the export's own totals, in the notebook and in the tests.
 2. **A small API that answers analyst questions.** Ten endpoints sharing one set of filters, rather than one endpoint per chart.
 3. **The simplest deployment that fits the data**: one function and one private file, rather than a server or a database.
-4. **One bonus**: a frontend that uses only the public API.
+4. **One frontend**, built only on the public API, rather than several smaller extras.
 
 I left out on purpose: user accounts (the data is public), a database (not needed at this size), automated processing of new exports, and rate limiting (see below).
 
@@ -293,7 +293,7 @@ I left out on purpose: user accounts (the data is public), a database (not neede
 - **Processing runs on a laptop.** Next step: a Lambda triggered when a new export lands in S3, so publishing needs no manual step.
 - **Factor labels are not merged.** CRIS has near-duplicates such as *Under influence - alcohol* and *Intoxicated - alcohol*; merging them is an analyst's decision, so I leave them separate and visible.
 
-## Bonus: the frontend
+## The frontend
 
 A React frontend in [`web/`](web/), served by the same Lambda function and built only on the public API. It has two pages:
 
