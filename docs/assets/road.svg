@@ -14,9 +14,9 @@
   </path>
   <!-- crashes travelling the road, one per severity, each at its own pace -->
   <g>
-    <circle r="2.6" cy="14" opacity="0" fill="#d0d8e1"><animateMotion dur="9s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="9s" repeatCount="indefinite"/></circle>
-    <circle r="2.8" cy="14" opacity="0" fill="#e7b63b"><animateMotion dur="7s" begin="1.5s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="7s" begin="1.5s" repeatCount="indefinite"/></circle>
-    <circle r="3" cy="14" opacity="0" fill="#f27000"><animateMotion dur="11s" begin="3s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="11s" begin="3s" repeatCount="indefinite"/></circle>
+    <circle r="2.6" cy="14" opacity="0" fill="#0f9ec4"><animateMotion dur="9s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="9s" repeatCount="indefinite"/></circle>
+    <circle r="2.8" cy="14" opacity="0" fill="#9c6cf0"><animateMotion dur="7s" begin="1.5s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="7s" begin="1.5s" repeatCount="indefinite"/></circle>
+    <circle r="3" cy="14" opacity="0" fill="#cc7d08"><animateMotion dur="11s" begin="3s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="11s" begin="3s" repeatCount="indefinite"/></circle>
     <circle r="3.2" cy="14" opacity="0" fill="#d31246"><animateMotion dur="8s" begin="4.5s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="8s" begin="4.5s" repeatCount="indefinite"/></circle>
   </g>
 </svg>
