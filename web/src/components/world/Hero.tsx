@@ -60,7 +60,7 @@ export default function Hero() {
   const [playing, setPlaying] = useState(false);
   const [day, setDay] = useState<number | null>(null);
   const [view, setView] = useState<'district' | 'lubbock' | null>('district');
-  const [tip, setTip] = useState<{ name: string; x: number; y: number } | null>(null);
+  const [tip, setTip] = useState<{ name: string | null; road: string | null; x: number; y: number } | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
   const [full, setFull] = useState(false);
@@ -90,7 +90,7 @@ export default function Hero() {
           const now = performance.now();
           if (now - lastPush > 60) { lastPush = now; setDay(d); }
         },
-        onHover: (name, x, y) => setTip(name ? { name, x, y } : null),
+        onHover: (name, x, y, road) => setTip(name || road ? { name, road, x, y } : null),
         onSelect: (name) => { setTouched(true); setPicked(name); },
       });
     } catch {
@@ -191,10 +191,11 @@ export default function Hero() {
         {fallback && pts.data && <CanvasMap points={pts.data} county={picked} view={view} maxDay={shownDay}
           onCounty={pickCounty} />}
         <div ref={labels} className="hero-labels" aria-hidden="true" />
-        {tip && tip.name !== picked && (
+        {tip && (tip.road || tip.name !== picked) && (
           <div className="hero-tip" style={{ transform: `translate(${tip.x + 14}px, ${tip.y + 14}px)` }} aria-hidden="true">
-            <b>{county(tip.name)} County</b>
-            {hover ? <span>{int(hover.crashes)} crashes · {pct(hover.ka_share)} K or A</span> : null}
+            {tip.road && <b className="hero-tip-road">{tip.road}</b>}
+            {tip.name && <b>{county(tip.name)} County</b>}
+            {tip.name && hover ? <span>{int(hover.crashes)} crashes · {pct(hover.ka_share)} K or A</span> : null}
           </div>
         )}
         {broken && (

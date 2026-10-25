@@ -38,6 +38,7 @@
   font-size: var(--t-label); color: var(--ink-2); white-space: nowrap;
 }
 .hero-tip b { color: var(--ink); font-weight: 600; }
+.hero-tip .hero-tip-road { font-family: var(--f-mono); font-size: 12px; }
 .hero-fallback { position: absolute; left: var(--gutter); right: var(--gutter); top: 50%; color: var(--ink-2); max-width: 52ch; }
 
 /* Copy sits in a column the map's brightest area (Lubbock, centre right) never reaches. */

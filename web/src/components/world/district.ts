@@ -46,7 +46,7 @@ export interface WorldOptions {
   points: Points;
   still: boolean;
   onDay: (day: number) => void;
-  onHover: (county: string | null, x: number, y: number) => void;
+  onHover: (county: string | null, x: number, y: number, road: string | null) => void;
   onSelect: (county: string | null) => void;
 }
 
@@ -280,6 +280,7 @@ export function createWorld(o: WorldOptions): World {
     const l = new LineSegments2(g, m);
     l.renderOrder = order;
     scene.add(l);
+    return l;
   };
   const edgeList = (list: { a: THREE.Vector3; b: THREE.Vector3 }[]) => list.flatMap(({ a, b }) => [a.x, a.y, a.z, b.x, b.y, b.z]);
   const all = [...edges.values()];
@@ -292,6 +293,12 @@ export function createWorld(o: WorldOptions): World {
   const routeEls: { el: HTMLElement; at: THREE.Vector3; near: number }[] = [];
   let disposed = false;
   let streets: THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial> | null = null;
+  // Highways are drawn as on a road map, a dark casing under a lighter line, both widening as the
+  // camera comes closer. Each segment keeps its route name so the pointer can pick it out.
+  const roadWidths: [LineMaterial, number][] = [];
+  const highway = { seg: [] as number[], name: [] as string[] };
+  let picked: LineSegments2 | null = null;
+  let road: string | null = null;
   void import('../../data/roads.json').then(({ default: roads }) => {
     if (disposed) return;
     const segments = (lines: number[][], y: number) => {
@@ -319,7 +326,7 @@ export function createWorld(o: WorldOptions): World {
     };
     fills(roads.water, 0x0f1d27, 0.005, 1.2);
     fills(roads.places, 0x161b19, 0.01, 1.3);
-    for (const [name, lon, lat, km2] of roads.towns as [string, number, number, number][]) {
+    for (const [name, lon, lat, km2] of (roads.towns as [string, number, number, number][]).sort((a, b) => b[3] - a[3])) {
       const el = document.createElement('i');
       el.textContent = name;
       if (km2 >= 100) el.dataset.size = 'city';
@@ -333,9 +340,21 @@ export function createWorld(o: WorldOptions): World {
     streets.renderOrder = 1.5;
     streets.frustumCulled = false;
     scene.add(streets);
-    addLines(segments(roads.s, 0.04), 0x66737a, 1, 0.55, 1.6);
-    addLines(segments(roads.u, 0.05), 0x8d9ba3, 1.4, 0.7, 1.7);
-    addLines(segments(roads.i, 0.06), 0xc2ccd2, 2, 0.85, 1.8);
+    const classes = [['s', 0.04, 0x6c7980, 1, 0.6], ['u', 0.05, 0x93a1a9, 1.4, 0.75], ['i', 0.06, 0xc8d2d8, 2, 0.9]] as const;
+    classes.forEach(([k, y, color, width, opacity], c) => {
+      const pos = segments(roads[k], y);
+      roadWidths.push([addLines(pos, 0x050605, width + 1.6, 0.85, 1.55 + c * 0.1).material, width + 1.6]);
+      roadWidths.push([addLines(pos, color, width, opacity, 1.6 + c * 0.1).material, width]);
+      // segment index -> route name, for the hover
+      let at = 0;
+      roads[k].forEach((line: number[], li: number) => {
+        for (let i = 0; i + 3 < line.length; i += 2, at += 6) {
+          highway.seg.push(pos[at], pos[at + 2], pos[at + 3], pos[at + 5]);
+          highway.name.push(roads.names[k][li]);
+        }
+      });
+    });
+    picked = addLines([0, 0, 0, 0, 0, 0], 0xf4f7f2, 3.2, 0, 1.95);
     for (const [text, lon, lat] of roads.labels as [string, number, number][]) {
       const el = document.createElement('b');
       el.textContent = text;
@@ -508,17 +527,47 @@ export function createWorld(o: WorldOptions): World {
       canvas.style.cursor = hovered ? 'pointer' : '';
       paint();
     }
-    o.onHover(hovered ? hovered.userData.name : null, e.clientX - r.left, e.clientY - r.top);
+    pickRoad();
+    o.onHover(hovered ? hovered.userData.name : null, e.clientX - r.left, e.clientY - r.top, road);
   };
   // A press that did not move is a click: select the county under the pointer (or clear the selection).
   const up = (e: PointerEvent) => {
     if (drag && !drag.moved) o.onSelect((hitAt(e)?.userData.name as string | undefined) ?? null); // works for taps too
     drag = null;
   };
+  // The highway nearest the pointer on the ground, within a few pixels' worth of kilometres.
+  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const onGround = new THREE.Vector3();
+  const pickRoad = () => {
+    let best = '';
+    if (raycaster.ray.intersectPlane(groundPlane, onGround)) {
+      const { x, z } = onGround;
+      let near = (cam.radius * 0.008) ** 2;
+      const s = highway.seg;
+      for (let i = 0, j = 0; i < s.length; i += 4, j++) {
+        const dx = s[i + 2] - s[i], dz = s[i + 3] - s[i + 1];
+        const t = THREE.MathUtils.clamp(((x - s[i]) * dx + (z - s[i + 1]) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+        const d = (s[i] + t * dx - x) ** 2 + (s[i + 1] + t * dz - z) ** 2;
+        if (d < near) { near = d; best = highway.name[j]; }
+      }
+    }
+    if ((best || null) === road || !picked) return;
+    road = best || null;
+    const pos: number[] = [];
+    if (road) {
+      const s = highway.seg;
+      highway.name.forEach((n, j) => { if (n === road) pos.push(s[j * 4], 0.08, s[j * 4 + 1], s[j * 4 + 2], 0.08, s[j * 4 + 3]); });
+    }
+    picked.geometry.dispose();
+    picked.geometry = new LineSegmentsGeometry().setPositions(pos.length ? pos : [0, 0, 0, 0, 0, 0]);
+    picked.material.opacity = road ? 0.95 : 0;
+    dirty = true;
+  };
   const leave = () => {
     hovered = null;
     paint();
-    o.onHover(null, 0, 0);
+    if (road && picked) { road = null; picked.material.opacity = 0; dirty = true; }
+    o.onHover(null, 0, 0, null);
   };
   const wheel = (e: WheelEvent) => {
     e.preventDefault();
@@ -583,14 +632,27 @@ export function createWorld(o: WorldOptions): World {
     dirty = false;
     place();
     // the street grid comes up as the camera nears a town, and stays a hairline from the whole district
+    const k = THREE.MathUtils.clamp(Math.sqrt(330 / cam.radius), 1, 2.6);
+    for (const [m, base] of roadWidths) m.linewidth = base * k;
     if (streets) streets.material.opacity = THREE.MathUtils.clamp(0.75 - cam.radius / 700, 0.28, 0.62);
     composer.render();
     const { clientWidth: w, clientHeight: h } = host;
+    // Larger places first; a label that would overlap one already placed is hidden, as on a printed map.
+    const placed: number[] = [];
     for (const { el, at, near } of [...labelEls.map((l) => ({ ...l, near: 420 })), ...routeEls]) {
       v.copy(at).project(camera);
+      const x = ((v.x + 1) / 2) * w, y = ((1 - v.y) / 2) * h;
       const visible = v.z < 1 && Math.abs(v.x) < 1.1 && Math.abs(v.y) < 1.1;
-      el.style.opacity = visible ? String(THREE.MathUtils.clamp(1.4 - camera.position.distanceTo(at) / near, 0, 0.85)) : '0';
-      el.style.transform = `translate(${((v.x + 1) / 2) * w}px, ${((1 - v.y) / 2) * h}px) translate(-50%, -50%)`;
+      let alpha = visible ? THREE.MathUtils.clamp(1.4 - camera.position.distanceTo(at) / near, 0, 0.85) : 0;
+      const half = (el.textContent?.length ?? 0) * 3.6 + 6;
+      if (alpha > 0.05) {
+        for (let i = 0; i < placed.length; i += 3) {
+          if (Math.abs(x - placed[i]) < half + placed[i + 2] && Math.abs(y - placed[i + 1]) < 15) { alpha = 0; break; }
+        }
+        if (alpha) placed.push(x, y, half);
+      }
+      el.style.opacity = String(alpha);
+      el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
     }
   };
 

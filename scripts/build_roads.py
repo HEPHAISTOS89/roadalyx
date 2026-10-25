@@ -89,6 +89,7 @@ def ref(name):
 def main(folder):
     roads = {"i": [], "u": [], "s": [], "l": []}
     routes = {}
+    named = {"i": [], "u": [], "s": []}  # the name of each highway line, shown when the pointer is on it
     for path in sorted(Path(folder).glob("tl_2024_48*_roads.zip")):
         for rec, parts in read(path):
             # roads, ramps and streets; no trails, alleys, driveways or parking lots
@@ -96,6 +97,8 @@ def main(folder):
                 continue
             k = kind(rec)
             roads[k].extend(simplify(part, 0.0003 if k == "l" else 0.0002) for part in parts)
+            if k in named:
+                named[k] += [ref(rec["FULLNAME"]) or rec["FULLNAME"]] * len(parts)
             r = rec["RTTYP"] in ("I", "U", "S") and ref(rec["FULLNAME"])
             if r and not (r.startswith("SH") and len(r) > 6):  # 4-digit "State Hwy" entries are FM roads miscoded
                 routes.setdefault(r, []).extend(p[len(p) // 2] for p in parts if len(p) > 4)
@@ -125,7 +128,7 @@ def main(folder):
     flat = lambda lines: [[c for x, y in line for c in (round(x, 4), round(y, 4))] for line in lines]
     # 4 decimals of a degree is about 10 m: plenty at map scale.
     out: dict[str, object] = {k: [[c for x, y in line for c in (round(x, 4), round(y, 4))] for line in lines] for k, lines in roads.items()}
-    out["labels"] = labels
+    out["labels"], out["names"] = labels, named
     out["water"], out["places"], out["towns"] = flat(water), flat(places), names
     out["source"] = "US Census Bureau, TIGER/Line Shapefiles 2024: roads, area water and places of the 17 district counties"
     OUT.write_text(json.dumps(out, separators=(",", ":")))
