@@ -217,6 +217,17 @@ table.data tr.sel { background: color-mix(in srgb, var(--accent) 12%, transparen
 .chart [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Map view controls, bottom left, and the hover card. */
 .map-modes { position: absolute; z-index: 2; left: 10px; top: 10px; display: flex; gap: 6px; }
+/* 3D camera pad: up/down tilt, left/right turn, compass in the middle. */
+.orbit {
+  position: absolute; z-index: 2; right: 10px; bottom: 34px; display: grid; grid-template-columns: repeat(3, 34px); grid-template-rows: repeat(3, 34px);
+  gap: 2px; padding: 4px; border-radius: var(--r-m); background: rgba(14, 15, 14, 0.9); border: 1px solid var(--rule-2); touch-action: none;
+}
+.orbit button { display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--ink-2); cursor: pointer; font-size: 16px; }
+.orbit button:hover, .orbit button:focus-visible { background: var(--raise); color: var(--ink); outline: none; }
+.orbit button:active { background: var(--rule-2); }
+.orbit button:nth-child(1) { grid-area: 1 / 2; } .orbit button:nth-child(2) { grid-area: 2 / 1; }
+.orbit .orbit-reset { grid-area: 2 / 2; color: var(--accent); }
+.orbit button:nth-child(4) { grid-area: 2 / 3; } .orbit button:nth-child(5) { grid-area: 3 / 2; }
 /* Ranked corridors: hover to see a street's crashes alone, click to frame it. */
 .corridors {
   position: absolute; z-index: 2; left: 10px; top: 54px; width: 252px; padding: 10px 6px 6px;

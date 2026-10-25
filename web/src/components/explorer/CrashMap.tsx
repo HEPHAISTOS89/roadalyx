@@ -4,6 +4,7 @@ import { Map as MlMap, NavigationControl, FullscreenControl, Popup, setWorkerUrl
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import type { FeatureCollection } from 'geojson';
+import { ArrowClockwiseIcon, ArrowCounterClockwiseIcon, CaretDownIcon, CaretUpIcon, CompassIcon } from '@phosphor-icons/react';
 import counties from '../../data/counties.json';
 import CanvasMap from '../maps/CanvasMap';
 import { supportsWebGL2 } from '../../lib/map2d';
@@ -113,7 +114,7 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
       if (!live || !el.current) return;
       m = new MlMap({
         container: el.current, style: s, bounds: DISTRICT, fitBoundsOptions: { padding: 24 },
-        attributionControl: { compact: true }, cooperativeGestures: false, maxPitch: 65,
+        attributionControl: { compact: true }, cooperativeGestures: false, maxPitch: 80,
       });
       m.getCanvas().addEventListener('webglcontextlost', lost);
       m.on('error', () => { if (!loaded) fail(); });
@@ -124,6 +125,9 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
       m.on('load', () => {
         if (!live) return;
         try {
+        // A night sky and a soft horizon haze, seen when the 3D view is tilted towards the horizon.
+        m!.setSky({ 'sky-color': '#121a1e', 'horizon-color': '#26302f', 'fog-color': '#0e0f0e',
+          'sky-horizon-blend': 0.7, 'horizon-fog-blend': 0.8, 'fog-ground-blend': 0.6, 'atmosphere-blend': 0 });
         m!.addSource('counties', { type: 'geojson', data: counties as FeatureCollection });
         m!.addLayer({ id: 'county-line', type: 'line', source: 'counties', paint: { 'line-color': '#4a524a', 'line-width': 1 } });
         // The state highway network under the crashes, so a cluster can be read as "on US 84" or "on I-27".
@@ -257,6 +261,28 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
       : ['case', on, mode === 'hotspots' ? 0.95 : POINT_OPACITY.crashes, 0.07]) as never);
     m.setFilter('density', corridor == null ? null : on as never);
   }, [ready, mode, corridor]);
+  // Camera pad: hold a button to keep turning or tilting; a click (or Enter) moves one step.
+  const spin = useRef(0);
+  const orbit = (bearing: number, pitch: number) => {
+    const m = map.current;
+    if (!m) return;
+    m.jumpTo({ bearing: m.getBearing() + bearing, pitch: Math.min(80, Math.max(0, m.getPitch() + pitch)) });
+  };
+  const hold = (bearing: number, pitch: number) => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      const step = () => { orbit(bearing, pitch); spin.current = requestAnimationFrame(step); };
+      cancelAnimationFrame(spin.current);
+      step();
+    },
+    onPointerUp: () => cancelAnimationFrame(spin.current),
+    onPointerCancel: () => cancelAnimationFrame(spin.current),
+    onClick: (e: React.MouseEvent) => {
+      if (e.detail) return; // pointer presses already moved the camera
+      map.current?.easeTo({ bearing: map.current.getBearing() + bearing * 15, pitch: Math.min(80, Math.max(0, map.current.getPitch() + pitch * 15)), duration: 300 });
+    },
+  });
+  useEffect(() => () => cancelAnimationFrame(spin.current), []);
   const pin = (st: number) => {
     const next = pinned === st ? null : st;
     setPinned(next);
@@ -331,6 +357,16 @@ export default function CrashMap({ points, selected, onSelect }: Props) {
             ))}
           </ol>
         </section>
+      )}
+      {tilted && (
+        <div className="orbit" role="group" aria-label="Camera: hold to turn or tilt; drag the map to move, right-drag to orbit">
+          <button type="button" aria-label="Tilt up" title="Tilt up" {...hold(0, 0.6)}><CaretUpIcon weight="bold" /></button>
+          <button type="button" aria-label="Turn left" title="Turn left" {...hold(-0.8, 0)}><ArrowCounterClockwiseIcon weight="bold" /></button>
+          <button type="button" aria-label="Top-down view, north up" title="Top-down view, north up" className="orbit-reset"
+            onClick={() => map.current?.easeTo({ bearing: 0, pitch: 0, duration: reduced() ? 0 : 600 })}><CompassIcon weight="bold" /></button>
+          <button type="button" aria-label="Turn right" title="Turn right" {...hold(0.8, 0)}><ArrowClockwiseIcon weight="bold" /></button>
+          <button type="button" aria-label="Tilt down" title="Tilt down" {...hold(0, -0.6)}><CaretDownIcon weight="bold" /></button>
+        </div>
       )}
       <div className="map-modes">
         <div role="group" aria-label="Map view">
