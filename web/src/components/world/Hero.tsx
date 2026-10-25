@@ -176,17 +176,28 @@ export default function Hero() {
     world.current?.setDay(d);
     setDay(d);
   };
-  // Fullscreen on the whole view, controls included; the button is hidden where the API is missing (iPhone).
+  // Fullscreen on the whole view, controls included. Where the API is missing or refused (iPhone, embedded
+  // browsers) the view fills the window instead, and Escape leaves it.
+  const [fake, setFake] = useState(false);
   useEffect(() => {
     const sync = () => setFull(document.fullscreenElement === section.current);
     document.addEventListener('fullscreenchange', sync);
     return () => document.removeEventListener('fullscreenchange', sync);
   }, []);
-  const canFull = typeof document !== 'undefined' && document.fullscreenEnabled;
+  useEffect(() => {
+    if (!fake) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setFake(false); };
+    document.addEventListener('keydown', esc);
+    document.documentElement.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', esc); document.documentElement.style.overflow = ''; };
+  }, [fake]);
   const toggleFull = () => {
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void section.current?.requestFullscreen().catch(() => {});
+    if (fake) setFake(false);
+    else if (document.fullscreenElement) void document.exitFullscreen();
+    else if (!document.fullscreenEnabled || !section.current?.requestFullscreen) setFake(true);
+    else void section.current.requestFullscreen().catch(() => setFake(true));
   };
+  const isFull = full || fake;
   const go = (v: 'district' | 'lubbock') => { setPicked(null); setView(v); world.current?.view(v); };
   const stat = (name: string | null) => (name ? byCounty.data?.groups.find((g) => g.value === name) : undefined);
   const hover = tip ? stat(tip.name) : undefined;
@@ -194,7 +205,7 @@ export default function Hero() {
   const broken = !!pts.error;
 
   return (
-    <section ref={section} className="hero" aria-labelledby="hero-h">
+    <section ref={section} className={fake ? 'hero is-full' : 'hero'} aria-labelledby="hero-h">
       <div ref={host} className="hero-stage" data-state={broken ? 'broken' : pts.data ? 'ready' : 'loading'}
         role="region" aria-label={pts.data
           ? `Map of the 17 counties of the TxDOT Lubbock District with ${int(pts.data.located)} injury crashes drawn at their reported locations. Colours show crash severity.`
@@ -240,12 +251,10 @@ export default function Hero() {
           <button type="button" aria-pressed={view === 'district'} onClick={() => go('district')} disabled={broken}>District</button>
           <button type="button" aria-pressed={view === 'lubbock'} onClick={() => go('lubbock')} disabled={broken}>Lubbock</button>
         </Seg>
-        {canFull && (
-          <button type="button" className="icon-btn hero-full" onClick={toggleFull} aria-pressed={full}
-            aria-label={full ? 'Exit full screen' : 'Full screen'} title={full ? 'Exit full screen' : 'Full screen'}>
-            {full ? <CornersInIcon weight="bold" /> : <CornersOutIcon weight="bold" />}
-          </button>
-        )}
+        <button type="button" className="icon-btn hero-full" onClick={toggleFull} aria-pressed={isFull}
+          aria-label={isFull ? 'Exit full screen' : 'Full screen'} title={isFull ? 'Exit full screen' : 'Full screen'}>
+          {isFull ? <CornersInIcon weight="bold" /> : <CornersOutIcon weight="bold" />}
+        </button>
         {picked && (
           <section ref={countyPanel} tabIndex={-1} className="hero-county" aria-labelledby="county-h">
             <div className="hero-county-head">

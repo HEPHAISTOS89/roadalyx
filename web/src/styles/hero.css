@@ -66,6 +66,7 @@
 .hero-side .hero-county { grid-column: 1 / -1; }
 .hero-full { color: var(--ink); }
 .hero:fullscreen { height: 100%; }
+.hero.is-full { position: fixed; inset: 0; z-index: 100; height: 100dvh; max-width: none; margin: 0; background: var(--ground); }
 .hero-county {
   width: 100%; display: grid; gap: var(--s3); justify-items: start; padding: var(--s4); border-radius: var(--r-l);
   animation: pop 260ms var(--spring); transform-origin: top right;
