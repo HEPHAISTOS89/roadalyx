@@ -206,3 +206,7 @@ def test_client_of_keeps_only_os_and_browser_family():
     assert client_of(mac) == {"os": "macOS", "browser": "Safari"}
     assert client_of("curl/8.4")["os"] == "bot"
     assert client_of("") == {"os": "other", "browser": "other"}
+
+
+def test_malformed_referer_is_logged_not_raised():
+    assert client.get("/api/health", headers={"referer": "http://["}).status_code == 200

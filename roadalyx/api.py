@@ -111,7 +111,10 @@ async def headers_and_access_log(request: Request, call_next):
         response.headers.setdefault("Cache-Control", "no-store")  # errors and liveness are never cached
     # One JSON line per request; CloudWatch Logs Insights can query these fields directly.
     # The referrer keeps only its host (where the visitor came from), never the full URL.
-    referrer = urlsplit(request.headers.get("referer", "")).hostname
+    try:
+        referrer = (urlsplit(request.headers.get("referer", "")).hostname or "")[:100] or None
+    except ValueError:  # a malformed Referer must not turn the response into an error
+        referrer = "invalid"
     print(json.dumps({"method": request.method, "path": request.url.path, "status": response.status_code,
                       "ms": round((time.perf_counter() - started) * 1000, 1),
                       **client_of(request.headers.get("user-agent", "")), "from": referrer}))
