@@ -25,7 +25,7 @@
 
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/">
-    <img src="docs/assets/demo.gif" width="880" alt="Demo: the District map orbits the 17 counties in 3D while crashes build up from 2020 to 2026, then the Analysis page with its filters, crash map, severity bars and ranked factors.">
+    <img src="docs/assets/demo.gif" width="880" alt="Demo in the dark theme: the District map orbits the 17 counties in 3D while crashes build up from 2020 to 2026, then the Analysis page: the Intersection filter, the top corridors, the Hotspots view, and the charts below.">
   </a>
 </p>
 
