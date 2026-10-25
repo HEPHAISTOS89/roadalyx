@@ -32,7 +32,9 @@ function Scope({ meta, total, located }: { meta: Meta; total: number | null; loc
   return (
     <p className="scope" aria-live="polite">
       <b className="num">{total == null ? '…' : int(total)}</b> injury crashes · {parts.join(' · ')}
-      {located != null && total != null && total > located ? <span className="muted"> · {int(total - located)} have no coordinates (not mapped)</span> : null}
+      {located != null && total != null && total > located ? <span className="muted"> · {int(total - located)} {total - located === 1
+        ? 'crash has no recorded location and is not shown on the map.'
+        : 'crashes have no recorded location and are not shown on the map.'}</span> : null}
       {total === 0 && <span className="scope-empty"> · No crashes match.</span>}
     </p>
   );
