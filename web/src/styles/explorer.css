@@ -52,10 +52,16 @@
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border: 1px solid var(--rule); border-radius: var(--r-l); background: var(--ground-2); }
 .kpis > div { padding: var(--s4) var(--s5); border-left: 1px solid var(--rule); display: grid; gap: 4px; align-content: start; }
 .kpis > div:first-child { border-left: 0; }
-.kpis dt { font-size: var(--t-label); color: var(--ink-3); }
+.kpis dt { display: flex; align-items: flex-start; gap: 6px; min-height: 3em; line-height: 1.5; font-size: var(--t-label); color: var(--ink-3); }
 .kpis dd { margin: 0; display: grid; gap: 2px; }
 .kpis b { font-size: var(--t-fig); font-weight: 540; letter-spacing: -0.03em; line-height: 1.05; }
 .kpis small { font-size: var(--t-label); color: var(--ink-2); }
+.kpi-crash-icon { flex: none; margin-top: 2px; }
+.kpi-crash-icon.k { color: var(--sev-k); }
+.kpi-crash-icon.a { color: var(--sev-a); }
+.kpis .kpi-people { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; }
+.kpi-people svg { flex: none; margin-top: 2px; }
+.kpis .kpi-scope { font-size: var(--t-micro); }
 @media (max-width: 800px) {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .kpis > div:nth-child(3) { border-left: 0; }

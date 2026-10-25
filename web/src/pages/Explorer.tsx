@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { CarIcon, UsersIcon } from '@phosphor-icons/react';
 import { useSearchParams } from 'react-router-dom';
 import FilterBar from '../components/explorer/FilterBar';
 import CrashMap from '../components/explorer/CrashMap';
@@ -76,8 +77,20 @@ export default function Explorer() {
 
         <dl className="kpis" aria-label="Key figures" aria-busy={sev.loading}>
           <div><dt>Injury crashes</dt><dd><b className="num">{int(s?.total)}</b></dd></div>
-          <div><dt><i className="sw k" />Fatal (K)</dt><dd><b className="num">{int(k?.crashes)}</b><small>{int(s?.deaths)} people killed</small></dd></div>
-          <div><dt><i className="sw a" />Suspected serious (A)</dt><dd><b className="num">{int(a?.crashes)}</b><small>{int(s?.serious_injuries)} people seriously injured</small></dd></div>
+          <div>
+            <dt><CarIcon size={16} className="kpi-crash-icon k" aria-hidden="true" /><span>Fatal crashes (K)</span></dt>
+            <dd><b className="num">{int(k?.crashes)}</b>
+              <small className="kpi-people"><UsersIcon size={16} aria-hidden="true" /><span>{int(s?.deaths)} people killed</span></small>
+              <small className="kpi-scope">Across all selected crashes</small>
+            </dd>
+          </div>
+          <div>
+            <dt><CarIcon size={16} className="kpi-crash-icon a" aria-hidden="true" /><span>Suspected serious-injury crashes (A)</span></dt>
+            <dd><b className="num">{int(a?.crashes)}</b>
+              <small className="kpi-people"><UsersIcon size={16} aria-hidden="true" /><span>{int(s?.serious_injuries)} people seriously injured</span></small>
+              <small className="kpi-scope">Across all selected crashes</small>
+            </dd>
+          </div>
           <div><dt>K + A share</dt><dd><b className="num">{pct(s?.ka_share)}</b></dd></div>
         </dl>
 
