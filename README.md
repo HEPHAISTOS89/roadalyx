@@ -25,7 +25,7 @@
 
 <p align="center">
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/">
-    <img src="docs/assets/demo.gif" width="880" alt="Demo in the dark theme: the District map, crashes building up from 2020 to 2026, then the Hotspots view with crashes per hexagon (height) and K+A share (colour); the Analysis page with the Intersection filter, the top corridors and the charts.">
+    <img src="docs/assets/demo.gif" width="880" alt="Demo in the light theme: the District map, crashes building up from 2020 to 2026, then the Hotspots view with crashes per hexagon (height) and K+A share (colour); the Analysis page with the Intersection filter, the top corridors and the charts.">
   </a>
 </p>
 
@@ -375,7 +375,7 @@ Both pages have a light and a dark theme (saved per browser, following the syste
 </p>
 
 <p align="center">
-  <img src="docs/assets/district-map.jpg" width="880" alt="The District map in the dark theme, Hotspots view: the 17 counties in 3D with crashes per 2.6 km hexagon. Lubbock stands tallest but grey (many, mostly minor crashes); rural highways such as US 385, US 84 and US 87 stand in red (fewer but more severe crashes). The timeline bar holds the Crashes / Hotspots switch with its legend.">
+  <img src="docs/assets/district-map.jpg" width="880" alt="The District map in the light theme, Hotspots view: the 17 counties in 3D with crashes per 2.6 km hexagon. Lubbock stands tallest but grey (many, mostly minor crashes); rural highways such as US 385, US 84 and US 87 stand in red (fewer but more severe crashes). The timeline bar holds the Crashes / Hotspots switch with its legend.">
 </p>
 
 Charts have text equivalents (tooltips and data tables), work with the keyboard, and respect the reduced-motion setting.
