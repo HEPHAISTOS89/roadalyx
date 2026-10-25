@@ -28,7 +28,7 @@ export default function FilterBar({ meta, filters, set }: Props) {
         {SEVS.map((s) => (
           <button key={s} type="button" aria-pressed={filters.severity.includes(s)} className={`seg-sev ${s.toLowerCase()}`}
             onClick={() => set({ severity: toggle(filters.severity, s) })} title={meta.definitions.severity[s]}>
-            <i className={`sw ${s.toLowerCase()}`} aria-hidden="true" />{s}<span className="seg-name"> {SEV_NAME[s]}</span>
+            <i className={`sw ${s.toLowerCase()}`} aria-hidden="true" />{s}<span className="sr-only"> {SEV_NAME[s]}</span>
           </button>
         ))}
       </fieldset>

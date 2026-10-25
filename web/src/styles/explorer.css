@@ -44,8 +44,6 @@
 .seg button:last-of-type { border-radius: 0 var(--r-m) var(--r-m) 0; }
 .seg button[aria-pressed='true'] { background: var(--raise); color: var(--ink); border-color: var(--accent); position: relative; z-index: 1; }
 .seg-sev { font-weight: 600; }
-.seg-name { font-weight: 400; color: var(--ink-3); }
-@media (max-width: 1280px) { .seg-name { display: none; } }
 .years { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); }
 .years select, .inline-select select { padding: 0 8px; }
 .reset { margin-left: auto; }
