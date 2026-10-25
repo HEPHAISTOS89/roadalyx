@@ -19,6 +19,8 @@ def get(path, **params):
     return r.json()
 
 
+# Service endpoints --------------------------------------------------------------
+
 def test_health_and_meta():
     health = get("/api/health")
     assert health["crashes"] == 4 and health["runtime"]["platform"] == "local"
@@ -27,6 +29,8 @@ def test_health_and_meta():
     assert meta["coverage"] == {"start": "2024-03-05", "end": "2025-12-31"}
     assert [c["value"] for c in meta["filters"]["county"]] == ["lubbock", "hale"]
 
+
+# Filters: applied, echoed back, and rejected with the allowed values when unknown -
 
 def test_severity_and_filter_echo():
     body = get("/api/v1/severity", county="Lubbock")
@@ -62,6 +66,8 @@ def test_unknown_county_lists_valid_ones():
     detail = client.get("/api/v1/severity", params={"county": "dallas"}).json()["detail"]
     assert detail == {"parameter": "county", "unknown": ["dallas"], "allowed": ["lubbock", "hale"]}
 
+
+# Metric and record endpoints, including the CSV export -------------------------
 
 def test_factors_trends_heatmap_breakdown():
     assert get("/api/v1/factors", limit=1)["factors"][0]["factor"] == "FAILED TO CONTROL SPEED"
@@ -107,6 +113,8 @@ def test_csv_export():
     assert "FAILED TO CONTROL SPEED; UNSAFE SPEED" in r.text
 
 
+# Security headers, the Lambda adapter, and spreadsheet-safe CSV ------------------
+
 def test_security_and_cache_headers():
     r = client.get("/api/v1/severity")
     assert "frame-ancestors 'none'" in r.headers["content-security-policy"]
@@ -146,6 +154,8 @@ def test_csv_cells_cannot_become_spreadsheet_formulas():
     assert _csv_safe("19TH ST") == "19TH ST" and _csv_safe(-1) == -1
 
 
+# Consistency: the same selection gives the same total on every endpoint ---------
+
 def test_year_filter_clips_the_time_axis_instead_of_showing_zeros():
     years = get("/api/v1/trends", by="year", year_from=2025)["buckets"]
     assert [b["key"] for b in years] == [2025]
@@ -165,6 +175,8 @@ def test_totals_reconcile_across_endpoints(params):
     assert sum(g["crashes"] for g in get("/api/v1/breakdown", by="county", **params)["groups"]) == total
     assert get("/api/v1/crashes", **params)["total"] == total
 
+
+# The portal served by the same function -----------------------------------------
 
 def test_portal_explains_a_missing_build_and_serves_one_built_later(tmp_path, monkeypatch):
     import roadalyx.api as api
@@ -197,6 +209,8 @@ def test_street_and_location_filters():
     assert client.get("/api/v1/severity", params={"street": "nowhere-rd"}).status_code == 422
     assert client.get("/api/v1/severity", params={"location": "roundabout"}).status_code == 422
 
+
+# Access log and interaction events: what is logged, and what is refused --------
 
 def test_client_of_keeps_only_os_and_browser_family():
     from roadalyx.api import client_of

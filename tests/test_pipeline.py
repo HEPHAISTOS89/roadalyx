@@ -25,6 +25,8 @@ def crashes(export):
     return {c["id"]: c for c in cris.build_crashes(export.persons)}
 
 
+# Reading the export and collapsing person rows into crashes --------------------
+
 def test_header_lines_are_skipped_and_declared_counts_read(export):
     assert export.persons.columns[0] == "Crash ID"  # BOM stripped too
     assert (export.declared_crashes, export.declared_units, export.declared_persons) == (4, 5, 7)
@@ -37,6 +39,8 @@ def test_one_record_per_crash_not_per_person(export, crashes):
     assert crashes[100]["people"] == 3
     assert cris.conflicting_crashes(export.persons) == 0
 
+
+# Cleaning rules: separators, CRIS placeholders, casing, vulnerable road users -----
 
 def test_factor_lists_are_split_on_both_separators(crashes):
     # "A; B" and "A;B" must give the same token, or one factor is counted as two
@@ -68,6 +72,8 @@ def test_vulnerable_road_users_come_from_person_rows(crashes):
     assert crashes[101]["vru"] == []
 
 
+# The three required metrics ----------------------------------------------------
+
 def test_metrics(crashes):
     records = list(crashes.values())
     sev = metrics.severity_counts(records)
@@ -88,6 +94,9 @@ def test_metrics(crashes):
     hours = metrics.trend(records, "hour", coverage)
     assert hours["unknown"] == 1 and sum(b["crashes"] for b in hours["buckets"]) == 3
 
+
+# The command line: it checks the header totals and never overwrites good output -----
+# test_real_export_matches_its_own_header runs only where the real CRIS file is present.
 
 def test_cli_refuses_an_export_that_disagrees_with_its_header(tmp_path):
     bad = tmp_path / "bad.csv"
@@ -121,6 +130,8 @@ def test_real_export_matches_its_own_header():
         t = metrics.trend(records, by, data.coverage)
         assert sum(b["crashes"] for b in t["buckets"]) + t["unknown"] == len(records)
 
+
+# Bad input fails loudly: a missing ID, date or victim count is an error, not a zero
 
 @pytest.mark.parametrize("column,value", [
     ("Crash Date", ""), ("Crash Date", "No Data"), ("Crash Date", "2024-02-30"),
@@ -172,6 +183,8 @@ def test_dataset_rejects_empty_input_and_duplicate_ids(crashes):
         Dataset([records[0], records[0]], {})
 
 
+# Street names: placeholders such as NA or UNKNOWN are missing streets, not a corridor
+
 @pytest.mark.parametrize("value,expected", [
     ("NA", None), (" unknown ", None), ("", None), ("No Data", None),
     ("NA ST", "NA ST"), ("19TH ST", "19TH ST"),
@@ -215,6 +228,8 @@ def test_cli_preserves_output_on_unknown_victim_count(export, tmp_path, capsys, 
     assert out.read_bytes() == b"previous valid dataset"
     assert "Crash Death Count" in capsys.readouterr().err
 
+
+# Writing the dataset: atomic, deterministic, and only valid JSON -----------------
 
 @pytest.mark.parametrize("existing", [False, True])
 @pytest.mark.parametrize("stage", ["serialization", "write", "replace"])

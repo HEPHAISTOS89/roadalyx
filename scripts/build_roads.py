@@ -8,6 +8,10 @@ Source: US Census Bureau TIGER/Line 2024 (public domain), from https://www2.cens
   python scripts/build_roads.py folder/with/the/17/zips
 
 Uses only the standard library: a TIGER shapefile is a list of polylines plus a dBase table.
+It runs once, offline; its output is committed, so the portal build and the Lambda never need it.
+
+Steps: read every county's roads, keep the drivable ones, sort them into interstate / US / state /
+local, simplify the lines, place route-number labels, add lakes and town limits, write one JSON file.
 """
 import io
 import json
@@ -22,6 +26,7 @@ OUT = Path(__file__).resolve().parents[1] / "web/src/data/roads.json"
 
 def read(zip_path):
     """Yield (record, [[lon, lat], ...] parts) for each polyline or polygon in a zipped shapefile."""
+    # The .dbf holds the attributes (road name, class), the .shp the geometry, in the same order.
     z = zipfile.ZipFile(zip_path)
     name = next(n for n in z.namelist() if n.endswith(".shp"))[:-4]
     shp, dbf = io.BytesIO(z.read(name + ".shp")), io.BytesIO(z.read(name + ".dbf"))
@@ -34,6 +39,7 @@ def read(zip_path):
         fields.append(((b + rest[:10]).split(b"\0")[0].decode(), rest[15]))
     dbf.seek(header)
 
+    # Skip the 100-byte .shp header, then read one attribute row and one shape per record.
     shp.seek(100)
     for _ in range(count):
         row = dbf.read(width)[1:]  # the first byte is the deletion flag
@@ -52,7 +58,10 @@ def read(zip_path):
 
 
 def simplify(line, tol):
-    """Douglas-Peucker in degrees; keeps the end points."""
+    """Douglas-Peucker in degrees; keeps the end points.
+
+    Drops the vertices that move the line by less than `tol` (0.0002 degree is about 20 m), which
+    shrinks the file many times over without a visible change at district scale."""
     if len(line) < 3:
         return line
     (x0, y0), (x1, y1) = line[0], line[-1]
@@ -87,6 +96,8 @@ def ref(name):
 
 
 def main(folder):
+    """Build roads.json from the folder of TIGER zips."""
+    # Road lines by class, the label points of each numbered route, and the name of each highway line.
     roads = {"i": [], "u": [], "s": [], "l": []}
     routes = {}
     named = {"i": [], "u": [], "s": []}  # the name of each highway line, shown when the pointer is on it
@@ -125,6 +136,7 @@ def main(folder):
         if rec["LSAD"] in ("25", "43", "47") and box[0] < x < box[2] and box[1] < y < box[3]:  # city, town, village
             places += [simplify(part, 0.0002) for part in parts]
             names.append([rec["NAME"], round(x, 4), round(y, 4), int(rec["ALAND"]) // 1_000_000])
+    # Write: coordinates flattened to [x, y, x, y, ...] per line, rounded, with the source credited.
     flat = lambda lines: [[c for x, y in line for c in (round(x, 4), round(y, 4))] for line in lines]
     # 4 decimals of a degree is about 10 m: plenty at map scale.
     out: dict[str, object] = {k: [[c for x, y in line for c in (round(x, 4), round(y, 4))] for line in lines] for k, lines in roads.items()}

@@ -1,4 +1,9 @@
-"""Point the API at a dataset built from the synthetic fixture, before roadalyx.api is imported."""
+"""Point the API at a dataset built from the synthetic fixture, before roadalyx.api is imported.
+
+tests/fixtures/mini_export.csv is a hand-made CRIS export of a few crashes, laid out like the real
+file (disclaimer lines, person rows) and seeded with its messiness, so every test runs without the
+lab's data and gives the same numbers on any machine.
+"""
 
 import os
 from pathlib import Path
