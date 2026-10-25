@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="28" viewBox="0 0 880 28" role="img" aria-label="A road with crashes moving along it">
+  <defs>
+    <linearGradient id="fade" x1="0" x2="1">
+      <stop offset="0" stop-color="#8b9588" stop-opacity="0"/>
+      <stop offset="0.18" stop-color="#8b9588" stop-opacity="0.55"/>
+      <stop offset="0.82" stop-color="#8b9588" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#8b9588" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- edge lines and the centre line, its dashes drifting -->
+  <path d="M40 8 H840 M40 20 H840" stroke="url(#fade)" stroke-width="1"/>
+  <path d="M40 14 H840" stroke="url(#fade)" stroke-width="1.4" stroke-dasharray="12 10">
+    <animate attributeName="stroke-dashoffset" from="0" to="-22" dur="1.2s" repeatCount="indefinite"/>
+  </path>
+  <!-- crashes travelling the road, one per severity, each at its own pace -->
+  <g>
+    <circle r="2.6" cy="14" opacity="0" fill="#d0d8e1"><animateMotion dur="9s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="9s" repeatCount="indefinite"/></circle>
+    <circle r="2.8" cy="14" opacity="0" fill="#e7b63b"><animateMotion dur="7s" begin="1.5s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="7s" begin="1.5s" repeatCount="indefinite"/></circle>
+    <circle r="3" cy="14" opacity="0" fill="#f27000"><animateMotion dur="11s" begin="3s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="11s" begin="3s" repeatCount="indefinite"/></circle>
+    <circle r="3.2" cy="14" opacity="0" fill="#d31246"><animateMotion dur="8s" begin="4.5s" repeatCount="indefinite" path="M120 0 H760"/><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="8s" begin="4.5s" repeatCount="indefinite"/></circle>
+  </g>
+</svg>

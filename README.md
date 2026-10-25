@@ -9,6 +9,10 @@
 </p>
 
 <p align="center">
+  <img src="docs/assets/road.svg" width="880" alt="">
+</p>
+
+<p align="center">
   <a href="pyproject.toml"><img alt="Python 3.13" src="https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python&logoColor=white"></a>
   <a href="https://i2swgeojg6x3hacixkymlgrei40hcxso.lambda-url.us-east-2.on.aws/api/docs"><img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-0.162-009688?style=flat-square&logo=fastapi&logoColor=white"></a>
   <a href="#-deployment-on-aws"><img alt="AWS Lambda, Free Tier" src="https://img.shields.io/badge/AWS_Lambda-Free_Tier-FF9900?style=flat-square"></a>
@@ -387,9 +391,5 @@ data/raw/            put district_crashes.csv here (not committed)
 ```
 
 ---
-
-<p align="center">
-  <img src="docs/assets/footer.svg" width="880" alt="">
-</p>
 
 <sub>Data: TxDOT Crash Records Information System (CRIS), query export supplied by TransTech Lab; TxDOT makes no warranty as to the accuracy of CRIS data. County boundaries: US Census Bureau, via `us-atlas`. District map roads, water and town limits: US Census Bureau TIGER/Line 2024, built with `scripts/build_roads.py`. Basemap: OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors.</sub>
